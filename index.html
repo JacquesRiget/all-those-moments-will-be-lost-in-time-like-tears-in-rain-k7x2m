@@ -28,6 +28,9 @@
   .cover { position:relative; }
   .cover::before { content:""; position:absolute; left:50%; top:3%; width:min(92vw,720px); aspect-ratio:395/191; transform:translateX(-50%); background:url(skynet-trekant.png) center/contain no-repeat; opacity:.38; pointer-events:none; }
   .cover > * { position:relative; z-index:1; }
+  #musicBtn { position:absolute; left:12px; bottom:calc(12px + env(safe-area-inset-bottom)); z-index:6; width:42px; height:42px; border-radius:50%; border:1px solid rgba(255,255,255,.55); background:var(--brand); color:#fff; font-size:20px; line-height:1; cursor:pointer; opacity:.85; }
+  #musicBtn.off { opacity:.4; text-decoration:line-through; }
+  @media print { #musicBtn { display:none; } }
   .sky { position:absolute; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); width:clamp(72px,14vmin,140px); height:auto; aspect-ratio:1; border-radius:50%; opacity:.32; pointer-events:none; z-index:5; }
   .cover { background:radial-gradient(ellipse at top, var(--cov1) 0%, var(--cov2) 70%); color:var(--covtxt); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:20px 14px; text-align:center; }
   .cover h1 { margin:0; font-size:clamp(24px,6vw,44px); line-height:1.15; letter-spacing:.3px; }
@@ -151,6 +154,7 @@
 <section class="page" id="app">
 <div class="wm"></div>
 <img class="sky" src="skynet.jpg" alt="" aria-hidden="true">
+<button id="musicBtn" class="off" aria-label="Musik til eller fra">♪</button>
 <div class="scroll">
 <header><button id="goCover" aria-label="Til forsiden">←</button> Spritter-Herrelogejulefrokosten 2026</header>
 <main>
@@ -168,6 +172,10 @@
       <div style="margin-top:10px">
         <label>Lyd ved advarsler</label>
         <div class="seg" id="sndSeg"><button data-s="1">Til</button><button data-s="0">Fra</button></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Baggrundsmusik</label>
+        <div class="seg" id="musicSeg"><button data-m="1">Til</button><button data-m="0">Fra</button></div>
       </div>
       <div class="hint" id="offlineStatus" style="margin-top:10px"></div>
       <div style="margin-top:10px">
@@ -243,8 +251,9 @@
 
 <!-- lydklip til advarslerne: læg filerne i mappen lyd/ (se lyd/LAES-MIG.txt); mangler de, er der bare ingen lyd -->
 <audio id="sndWeak" preload="auto"><source src="lyd/kinky-morten.mp3"><source src="lyd/kinky-morten.m4a"><source src="lyd/kinky-morten.wav"><source src="lyd/kinky-morten.ogg"></audio>
+<audio id="music" loop preload="none"><source src="lyd/last-christmas.mp3"><source src="lyd/last-christmas.m4a"><source src="lyd/last-christmas.wav"><source src="lyd/last-christmas.ogg"></audio>
 <audio id="sndOk" preload="auto"><source src="lyd/affirmative.mp3"><source src="lyd/affirmative.m4a"><source src="lyd/affirmative.wav"><source src="lyd/affirmative.ogg"></audio>
-<audio id="sndReset" preload="auto"><source src="lyd/mind-is-going.mp3"><source src="lyd/mind-is-going.m4a"><source src="lyd/mind-is-going.wav"><source src="lyd/mind-is-going.ogg"></audio>
+<audio id="sndReset" loop preload="auto"><source src="lyd/mind-is-going.mp3"><source src="lyd/mind-is-going.m4a"><source src="lyd/mind-is-going.wav"><source src="lyd/mind-is-going.ogg"></audio>
 <audio id="sndDave" preload="auto"><source src="lyd/dave.mp3"><source src="lyd/dave.m4a"><source src="lyd/dave.wav"><source src="lyd/dave.ogg"></audio>
 
 <input type="file" id="camInput" accept="image/*" hidden>
@@ -288,7 +297,7 @@ const T0 = { sT:3, sB:3, sL:1, sR:1, N:8, D:140 };
 const T1 = { sT:2, sB:2, sL:0, sR:0, N:8, D:140 };
 const NAMES = ['Stormester Thomas', 'Per', 'Kinky Morten', 'Prospect Anders', 'Prospect Kenneth', 'Søren', 'René', 'Kim Tudefjæs', 'Dr Albin', 'Lillemester Jess', 'Dirty Frank', 'Trym', 'Permutationsmester Jacques', 'Torben', 'Ph. Michael aka. Usselpinden'];
 NAMES.push('T-1000', 'Bishop', 'David', 'Roy Batty', 'T-800', 'Murphy', 'WALL-E', 'Ava', 'K-2SO', 'Rick Deckard', '"K" - KD6-3.7');
-const DEF = { theme:'jul', shape:'rect', tables:[T0], n:8, ruleSeat:true, rule1:true, opp:true, rule3:false, rule3Shown:false, weak:'', people:[], rounds:null, seeds:[], photoQ:'500', rack:'right', sound:true, cur:0 };
+const DEF = { theme:'jul', shape:'rect', tables:[T0], n:8, ruleSeat:true, rule1:true, opp:true, rule3:false, rule3Shown:false, weak:'', people:[], rounds:null, seeds:[], photoQ:'500', rack:'right', sound:true, music:true, cur:0 };
 let S = load();
 let selected = null;
 
@@ -313,7 +322,7 @@ function load() {
   if (!Array.isArray(s.seeds)) s.seeds = [];
   if (!['Original', '500', '300'].includes(s.photoQ)) s.photoQ = '500';
   if (!['left', 'right', 'off'].includes(s.rack)) s.rack = 'right';
-  s.sound = s.sound !== false;
+  s.sound = s.sound !== false; s.music = s.music !== false;
   s.cur = Math.max(0, Math.min(s.cur, s.rounds.length-1));
   return s;
 }
@@ -471,14 +480,56 @@ function ask(title, text, okLabel = 'OK') {
 $('#warnInput').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('#warnBtns .yes').click(); } };
 $('#warnBtns').onclick = e => {
   const b = e.target.closest('[data-b]'); if (!b) return;
-  $('#warn').hidden = true; stopSounds(); warnButtons[+b.dataset.b].run();
+  $('#warn').hidden = true; stopSounds(false); warnButtons[+b.dataset.b].run();
+  if (!soundPlaying() && Date.now() >= musicHoldUntil) duckMusic(false); // musikken starter igen ved Ja/Nej, med mindre knappen selv starter et nyt klip eller beder om en pause
 };
 // Lyd: afspilles direkte fra trykket (nødvendigt på iPhone/iPad); mangler klippet, sker der ingenting.
+const SOUND_IDS = ['#sndWeak', '#sndOk', '#sndReset', '#sndDave'];
+// HAL-klippene: en pause (ms) efter klippet, før musikken starter igen. Kinky Morten-advarslen er ikke med:
+// dér starter musikken først, når der trykkes Ja eller Nej.
+const MUSIC_DELAY = { '#sndOk': 1500, '#sndDave': 1500, '#sndReset': 1500 };
+let resumeTimer = null, musicHoldUntil = 0;
+// Hold musikken i pause i `ms` millisekunder endnu og start den så (bruges efter dialogen med HAL-loopet).
+function holdMusic(ms) {
+  musicHoldUntil = Date.now() + ms; clearTimeout(resumeTimer);
+  resumeTimer = setTimeout(() => { if (!soundPlaying()) duckMusic(false); }, ms);
+}
+const soundPlaying = () => SOUND_IDS.some(id => { const a = $(id); return !a.paused && !a.ended; });
 function playSound(id) {
   if (!S.sound) return;
-  const a = $(id); try { a.currentTime = 0; const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  const a = $(id); clearTimeout(resumeTimer); duckMusic(true);
+  try {
+    a.currentTime = 0;
+    a.onended = () => { if (id in MUSIC_DELAY) resumeTimer = setTimeout(() => { if (!soundPlaying()) duckMusic(false); }, MUSIC_DELAY[id]); };
+    const p = a.play(); if (p && p.catch) p.catch(() => duckMusic(false));
+  } catch (e) { duckMusic(false); }
 }
-function stopSounds() { for (const id of ['#sndWeak', '#sndOk', '#sndReset', '#sndDave']) { const a = $(id); try { a.pause(); a.currentTime = 0; } catch (e) {} } }
+function stopSounds(resume = true) {
+  clearTimeout(resumeTimer);
+  for (const id of SOUND_IDS) { const a = $(id); try { a.pause(); a.currentTime = 0; } catch (e) {} }
+  if (resume) duckMusic(false);
+}
+
+// Baggrundsmusik: starter ved første tryk (browsere kræver det), kører i loop og holder pause, mens et lydklip spiller.
+let musicOn = false, ducked = false;
+const updateMusicBtn = () => { const b = $('#musicBtn'); b.classList.toggle('off', !(S.music && musicOn)); b.title = S.music ? 'Slå musikken fra' : 'Slå musikken til'; };
+function tryMusic() {
+  if (!S.music || musicOn) return;
+  const a = $('#music'); a.volume = .35;
+  const p = a.play(); if (p && p.then) p.then(() => { musicOn = true; updateMusicBtn(); }).catch(() => {});
+}
+function duckMusic(on) {
+  const a = $('#music');
+  if (on) { if (musicOn && !a.paused) { a.pause(); ducked = true; } return; }
+  if (ducked && S.music) a.play().catch(() => {});
+  ducked = false;
+}
+function setMusic(on) {
+  S.music = on;
+  if (!on) { $('#music').pause(); musicOn = false; ducked = false; } else tryMusic();
+  applyTheme(); updateMusicBtn(); save();
+}
+for (const t of ['click', 'touchend', 'keydown']) document.addEventListener(t, tryMusic, { passive:true });
 function warnWeak() {
   playSound('#sndWeak');
   showWarn({
@@ -672,6 +723,7 @@ function applyTheme() {
   document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('on', b.dataset.q === S.photoQ));
   document.querySelectorAll('#rackSeg button').forEach(b => b.classList.toggle('on', b.dataset.r === S.rack));
   document.querySelectorAll('#sndSeg button').forEach(b => b.classList.toggle('on', (b.dataset.s === '1') === S.sound));
+  document.querySelectorAll('#musicSeg button').forEach(b => b.classList.toggle('on', (b.dataset.m === '1') === S.music));
   $('#room').className = 'room ' + S.rack;
 }
 function render() {
@@ -897,7 +949,7 @@ document.addEventListener('touchmove', e => { if (drag && drag.on) e.preventDefa
 $('#viewer').onclick = e => { if (e.target.id === 'viewer' || e.target.id === 'vClose') closeViewer(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
 function resetAll() {
-  const keep = { theme:S.theme, photoQ:S.photoQ, rack:S.rack, sound:S.sound }; // visningsindstillinger er ikke "valg", der nulstilles
+  const keep = { theme:S.theme, photoQ:S.photoQ, rack:S.rack, sound:S.sound, music:S.music }; // visningsindstillinger er ikke "valg", der nulstilles
   localStorage.removeItem('bordplan');
   S = Object.assign(load(), keep); S.tables = S.tables.map(t => ({ ...t }));
   weakDeclined = false; selected = null;
@@ -905,12 +957,21 @@ function resetAll() {
   applyTheme(); renderSetup(); render();
   $('#setup').scrollIntoView({ behavior:'smooth', block:'start' });
 }
-// Lyden startes direkte fra trykket på Ja (nødvendigt på iPhone/iPad), derefter nulstilles alt.
-$('#resetAll').onclick = () => showWarn({
-  calm:true, title:'Judgment Day – nulstil alle valg', text:'Borde, navne, regler (også Regel 4) og permutationer bliver slettet.',
-  buttons: [{ label:'Annuller', run: () => {} }, { label:'Ja', cls:'yes', run: () => { playSound('#sndReset'); resetAll(); } }]
-});
-$('#sndSeg').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { S.sound = b.dataset.s === '1'; if (!S.sound) stopSounds(); applyTheme(); save(); } };
+// HAL ("Dave, my mind is going") spiller i loop, så længe dialogen er åben, og stopper ved Ja/Annuller.
+// Lyden startes direkte fra trykket på knappen (nødvendigt på iPhone/iPad). Musikken starter igen 1,5 s efter.
+$('#resetAll').onclick = () => {
+  playSound('#sndReset');
+  showWarn({
+    calm:true, title:'Judgment Day – nulstil alle valg', text:'Borde, navne, regler (også Regel 4) og permutationer bliver slettet.',
+    buttons: [
+      { label:'Annuller', run: () => holdMusic(1500) },
+      { label:'Ja', cls:'yes', run: () => { holdMusic(1500); resetAll(); } }
+    ]
+  });
+};
+$('#musicSeg').onclick = e => { const b = e.target.closest('[data-m]'); if (b) setMusic(b.dataset.m === '1'); };
+$('#musicBtn').onclick = () => setMusic(!(S.music && musicOn));
+$('#sndSeg').onclick =e => { const b = e.target.closest('[data-s]'); if (b) { S.sound = b.dataset.s === '1'; if (!S.sound) stopSounds(); applyTheme(); save(); } };
 $('#rackSeg').onclick =e => { const b = e.target.closest('[data-r]'); if (b) { S.rack = b.dataset.r; applyTheme(); save(); } };
 $('#rackFlip').onclick = () => { S.rack = S.rack === 'left' ? 'right' : 'left'; applyTheme(); save(); };
 $('#qSeg').onclick = e => { // skift billedmappe: glem fundne billeder og led igen
