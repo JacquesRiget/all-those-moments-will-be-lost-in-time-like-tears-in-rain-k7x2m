@@ -1,0 +1,14 @@
+{
+  "name": "Spritter-Herrelogejulefrokosten 2026",
+  "short_name": "Bordplan",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#2b0a10",
+  "theme_color": "#7b1a24",
+  "icons": [
+    { "src": "ikon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

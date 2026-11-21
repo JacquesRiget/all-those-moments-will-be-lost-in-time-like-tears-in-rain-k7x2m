@@ -1,0 +1,42 @@
+Billeder til bordplanen
+=======================
+
+Læg et billede pr. spritter i denne mappe. Filen skal hedde præcis det samme som navnet
+(store/små bogstaver tæller, hvis siden ligger på et almindeligt webhotel).
+Endelser der virker: .jpg  .jpeg  .png  .webp
+
+Tips:
+- Kvadratiske billeder, hvor ansigtet fylder det meste, ser bedst ud. Andre formater beskæres
+  automatisk til en cirkel (midten, med fokus på toppen af billedet).
+- Gør billederne små: ca. 300 x 300 pixel og under 100 KB. Ellers går det langsomt på iPad/iPhone.
+- Har en spritter intet billede, vises navnet som før.
+
+Filnavne:
+
+Stormester Thomas.jpg
+Per.jpg
+Kinky Morten.jpg
+Prospect Anders.jpg
+Prospect Kenneth.jpg
+Søren.jpg
+René.jpg
+Kim Tudefjæs.jpg
+Dr Albin.jpg
+Lillemester Jess.jpg
+Dirty Frank.jpg
+Trym.jpg
+Permutationsmester Jacques.jpg
+Torben.jpg
+Ph. Michael aka. Usselpinden.jpg
+
+T-1000.jpg
+Bishop.jpg
+David.jpg
+Roy Batty.jpg
+T-800.jpg
+Murphy.jpg
+WALL-E.jpg
+Ava.jpg
+K-2SO.jpg
+Rick Deckard.jpg
+K - KD6-3.7.jpg        (anførselstegnene i "K" udelades, fordi de ikke må stå i filnavne)

@@ -1,0 +1,19 @@
+Lydklip til advarslerne
+=======================
+
+Læg op til fire lydfiler i denne mappe med præcis disse navne:
+
+  mind-is-going.mp3  spilles når du trykker Ja til "Judgment Day – nulstil alle valg" ("Dave, my mind is going...")
+  affirmative.mp3    spilles når en ny permutation lykkes og følger reglerne ("Affirmative, Dave...")
+  kinky-morten.mp3   spilles når advarslen "Svag spritter identificeret" kommer
+  dave.mp3           spilles når "I'm sorry, Dave. I'm afraid I can't do that." kommer
+
+Endelserne .mp3, .m4a, .wav og .ogg virker. mp3 eller m4a er sikrest på iPhone/iPad.
+Mangler en fil, kommer der bare ingen lyd for den advarsel.
+
+Tips:
+- Hold klippene korte (et par sekunder til ca. 10 sekunder) og under ca. 300 KB.
+- Lyden stopper, når du trykker på en knap i advarslen.
+- Lyden kan slås fra under Opsætning -> "Lyd ved advarsler".
+- På iPhone/iPad afspilles lyd kun, hvis den udløses af et tryk (fx "Ny permutation"). Det gør den her.
+  Hvis telefonen er sat på lydløs (sidekontakten), høres den ikke.

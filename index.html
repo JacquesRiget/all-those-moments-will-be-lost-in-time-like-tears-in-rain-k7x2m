@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7b1a24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bordplan">
+<link rel="apple-touch-icon" href="ikon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Spritter-Herrelogejulefrokosten 2026</title>
+<script>try { var t = JSON.parse(localStorage.getItem('bordplan')).theme; if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+  :root { --bad:#d64545; }
+  :root, [data-theme="jul"] { --card:rgba(255,236,233,.84); --bg:#f6efe2; --ink:#2a1a1a; --mute:#7a6a5e; --line:#e6dcc8; --brand:#7b1a24; --accent:#a8202e; --ok:#2f7d4f; --hdr:#f3d98b; --hdrline:#c9a227; --cov1:#5a1119; --cov2:#2b0a10; --covtxt:#f3d98b; --covimg:#c9a227; --covgoline:#c9a227; --covgo:rgba(201,162,39,.15); --cap:#d9b8a0; --orn:"✦  ✦  ✦"; --ornc:#c9a227; }
+  [data-theme="blue"] { --card:rgba(228,238,255,.84); --bg:#f3f5f8; --ink:#1c2430; --mute:#6b7788; --line:#dde3ea; --brand:#1f3a5f; --accent:#2f80ed; --ok:#2e9e5b; --hdr:#fff; --hdrline:#1f3a5f; --cov1:#1d3557; --cov2:#14233a; --covtxt:#fff; --covimg:transparent; --covgoline:rgba(255,255,255,.35); --covgo:rgba(255,255,255,.1); --cap:#9fb0c8; --orn:""; --ornc:#fff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  html, body { height:100%; overflow:hidden; }
+  #pager { display:flex; height:100vh; height:100dvh; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-behavior:smooth; overscroll-behavior-x:contain; }
+  .page { flex:0 0 100%; width:100%; height:100%; overflow-y:auto; scroll-snap-align:start; scroll-snap-stop:always; }
+  #app { position:relative; overflow:hidden; }
+  .wm { position:absolute; inset:0; background:url(forside.webp) center/cover no-repeat; opacity:.4; pointer-events:none; }
+  .scroll { position:relative; height:100%; overflow-y:auto; }
+  /* næsten usynlige logoer: trekanten som baggrund på forsiden og et lille mærke nederst til højre i appen */
+  .cover { position:relative; }
+  .cover::before { content:""; position:absolute; left:50%; top:3%; width:min(92vw,720px); aspect-ratio:395/191; transform:translateX(-50%); background:url(skynet-trekant.png) center/contain no-repeat; opacity:.38; pointer-events:none; }
+  .cover > * { position:relative; z-index:1; }
+  .sky { position:absolute; right:12px; bottom:calc(12px + env(safe-area-inset-bottom)); width:clamp(72px,14vmin,140px); height:auto; aspect-ratio:1; border-radius:50%; opacity:.32; pointer-events:none; z-index:5; }
+  .cover { background:radial-gradient(ellipse at top, var(--cov1) 0%, var(--cov2) 70%); color:var(--covtxt); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:20px 14px; text-align:center; }
+  .cover h1 { margin:0; font-size:clamp(24px,6vw,44px); line-height:1.15; letter-spacing:.3px; }
+  .cover img { width:100%; max-width:960px; max-height:55vh; object-fit:contain; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.5); }
+  .cover .caption { font-size:13px; color:var(--cap); margin-top:-8px; }
+  .cover h1::after { content:var(--orn); display:block; margin-top:10px; font-size:.5em; letter-spacing:.4em; color:var(--ornc); }
+  .cover img { border:3px solid var(--covimg); }
+  .cover .go { margin-top:6px; border:1px solid var(--covgoline); background:var(--covgo); color:var(--covtxt); border-radius:999px; padding:12px 22px; font:inherit; font-weight:600; }
+  .cover .go span { display:inline-block; animation:nudge 1.4s ease-in-out infinite; }
+  @keyframes nudge { 50% { transform:translateX(7px); } }
+  header button { background:none; border:0; color:var(--hdr); font-size:20px; padding:0 8px 0 0; cursor:pointer; }
+  .cover { padding-top:calc(20px + env(safe-area-inset-top)); padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
+  header { background:var(--brand); color:var(--hdr); padding:calc(12px + env(safe-area-inset-top)) 16px 12px; font-weight:600; font-size:18px; border-bottom:3px solid var(--hdrline); }
+  main { max-width:900px; margin:0 auto; padding:12px; display:grid; gap:12px; }
+  .card { background:var(--card); border-radius:12px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  details > summary, .card h2 { font-weight:600; font-size:22px; }
+  details > summary { cursor:pointer; list-style:none; }
+  .card h2 { margin:0 0 10px; }
+  details > summary::before { content:"▸ "; }
+  details[open] > summary::before { content:"▾ "; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-top:8px; }
+  .prow { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .prow label { width:90px; flex:none; font-size:15px; color:var(--ink); }
+  .prow select { flex:1; min-width:0; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  /* ens højde på felter og rullelister (Safari på iPad gør dem ellers mindre) */
+  input[type=number], .prow select, .wsel { height:44px; font-size:16px; }
+  .prow select { margin-top:0; }
+  [hidden] { display:none !important; }
+  .wsel { display:block; width:100%; margin-top:6px; font:inherit; padding:9px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  #warn { position:fixed; inset:0; z-index:100; background:#8b0000; display:flex; align-items:center; justify-content:center; padding:16px; animation:alarm .5s steps(1) infinite; }
+  #warn[hidden] { display:none; }
+  .warnbox { background:#fff; border:8px solid var(--bad); border-radius:16px; padding:22px 18px; max-width:540px; width:100%; text-align:center; animation:shake .6s ease-in-out infinite, borderblink .5s steps(1) infinite; }
+  .warnicon { font-size:52px; line-height:1; animation:blink 1s steps(1) infinite; }
+  .warnbox h2 { margin:10px 0 8px; color:var(--bad); font-size:clamp(24px,7vw,36px); line-height:1.15; text-transform:uppercase; letter-spacing:1px; animation:blink .5s steps(1) infinite; }
+  #warnName { font-size:clamp(28px,9vw,46px); font-weight:800; color:#111; line-height:1.1; margin-bottom:10px; }
+  .warnbox p { font-size:18px; margin:0 0 16px; }
+  .warnbtns { display:flex; gap:12px; }
+  .warnbtns .btn { flex:1; font-size:22px; font-weight:800; padding:16px; }
+  .warnbtns .yes { background:var(--bad); color:#fff; border-color:var(--bad); }
+  @keyframes alarm { 0% { background:#b00000; } 50% { background:#3a0000; } }
+  @keyframes borderblink { 0% { border-color:#ff1a1a; } 50% { border-color:#ffd400; } }
+  @keyframes blink { 50% { opacity:.25; } }
+  @keyframes shake { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-6px) rotate(-.6deg); } 40% { transform:translateX(6px) rotate(.6deg); } 60% { transform:translateX(-4px); } 80% { transform:translateX(4px); } }
+  #viewer { position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.74); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #viewer[hidden] { display:none; }
+  .vbox { position:relative; background:#fff; border:4px solid var(--hdrline); border-radius:14px; padding:12px; max-width:min(92vw,640px); text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #vImg { display:block; margin:0 auto; max-width:100%; max-height:66vh; border-radius:8px; }
+  #vImg[hidden] { display:none; }
+  #vName { margin-top:10px; font-size:clamp(22px,6vw,32px); font-weight:700; line-height:1.15; color:var(--brand); word-break:break-word; }
+  #vSeat { margin-top:4px; font-size:14px; color:var(--mute); }
+  #vClose { position:absolute; top:-16px; right:-16px; width:38px; height:38px; border-radius:50%; border:2px solid #fff; background:var(--brand); color:#fff; font-size:18px; cursor:pointer; }
+  #warnImg { display:block; width:100%; border-radius:10px; margin:0 0 10px; }
+  #warnImg[hidden] { display:none; }
+  #warnInput { width:100%; font:inherit; font-size:18px; padding:12px; border:2px solid var(--line); border-radius:10px; margin:0 0 16px; }
+  #warn.calm { animation:none; background:rgba(20,35,58,.6); }
+  #warn.calm .warnbox { animation:none; border:2px solid var(--brand); }
+  #warn.calm .warnbox h2 { animation:none; color:var(--brand); text-transform:none; letter-spacing:0; font-size:clamp(20px,5vw,26px); }
+  #warn.calm .warnicon { display:none; }
+  #warn.calm #warnName { font-size:clamp(22px,6vw,30px); font-weight:700; color:var(--brand); }
+  #warn.calm .warnbtns .btn { font-size:18px; font-weight:600; padding:12px; }
+  #warn.calm .warnbtns .yes { background:var(--brand); border-color:var(--brand); }
+  @media (prefers-reduced-motion: reduce) { #warn, .warnbox, .warnicon, .warnbox h2 { animation:none; } }
+  .tbl { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+  .mute { color:var(--mute); font-size:14px; font-weight:400; }
+  label { display:block; font-size:13px; color:var(--mute); }
+  input[type=number], textarea { width:100%; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; margin-top:2px; }
+  textarea { min-height:110px; resize:vertical; }
+  .seg { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-top:2px; }
+  .seg button { flex:1; border:0; background:#fff; padding:9px; font:inherit; }
+  .seg button.on { background:var(--brand); color:#fff; }
+  .chk { display:flex; gap:8px; align-items:center; color:var(--ink); font-size:15px; margin-top:12px; }
+  .chk input { width:20px; height:20px; accent-color:var(--accent); }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+  .tab { border:1px solid var(--line); background:#fff; border-radius:999px; padding:7px 14px; font:inherit; }
+  .tab.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btn { border:1px solid var(--line); background:#fff; border-radius:10px; padding:10px 14px; font:inherit; }
+  .btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  .btn.danger { color:var(--bad); }
+  .status { margin-top:8px; font-size:14px; }
+  .status.ok { color:var(--ok); } .status.bad { color:var(--bad); } .status.info { color:var(--mute); }
+  svg { width:100%; height:auto; max-height:75vh; display:block; touch-action:manipulation; }
+  /* rummet: vinreol på den ene side, bordplanen fylder resten; reolen strækkes til samme højde som tegningen */
+  .room { display:grid; grid-template-columns:clamp(60px,14%,120px) minmax(0,1fr); gap:8px; align-items:stretch; }
+  .room.right { grid-template-columns:minmax(0,1fr) clamp(60px,14%,120px); }
+  .room.right .rack { order:2; }
+  .room.off { grid-template-columns:minmax(0,1fr); }
+  .rack { position:relative; border-radius:8px; border:3px solid var(--hdrline); background:#8a5a2b url(vinreol.jpg) center/cover no-repeat; box-shadow:inset 0 0 14px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.25); }
+  .room.off .rack { display:none; }
+  .rack button { position:absolute; top:6px; left:50%; transform:translateX(-50%); width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.6); background:rgba(0,0,0,.45); color:#fff; font-size:18px; line-height:1; cursor:pointer; }
+  .seat { cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mute); font-weight:600; font-size:12px; }
+  .rep { color:var(--bad); font-weight:600; }
+  .hint { font-size:13px; color:var(--mute); margin-top:6px; }
+  @media print { header, details, .tabs, .actions, .hint, .cover, .wm, .sky { display:none; } body { background:#fff; } html, body, #pager, .page, .scroll { height:auto; overflow:visible; display:block; } }
+</style>
+</head>
+<body>
+<div id="pager">
+<section class="page cover" id="cover">
+  <h1>Spritter-<wbr>Herrelogejulefrokosten<br>2026</h1>
+  <img src="forside.webp" alt="Spritterne ved julefrokosten sidste år">
+  <div class="caption">Sidste år</div>
+  <button class="go" id="goApp">Swipe til højre for bordplan <span>→</span></button>
+</section>
+<section class="page" id="app">
+<div class="wm"></div>
+<img class="sky" src="skynet.jpg" alt="" aria-hidden="true">
+<div class="scroll">
+<header><button id="goCover" aria-label="Til forsiden">←</button> Spritter-Herrelogejulefrokosten 2026</header>
+<main>
+  <div class="card">
+    <details id="setup" open>
+      <summary>Opsætning</summary>
+      <div style="margin-top:10px">
+        <label>Tema</label>
+        <div class="seg" id="themeSeg"><button data-th="blue">Neutral blå</button><button data-th="jul">Jul</button></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Billedkvalitet (mappe i fotos)</label>
+        <div class="seg" id="qSeg"><button data-q="Original">Original</button><button data-q="500">500</button><button data-q="300">300</button></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Lyd ved advarsler</label>
+        <div class="seg" id="sndSeg"><button data-s="1">Til</button><button data-s="0">Fra</button></div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Vinreol ved bordplanen</label>
+        <div class="seg" id="rackSeg"><button data-r="left">Venstre</button><button data-r="right">Højre</button><button data-r="off">Skjult</button></div>
+      </div>
+      <div class="grid" style="margin-top:10px">
+        <div>
+          <label>Antal borde</label>
+          <div class="seg" id="cnt"><button data-c="1">1</button><button data-c="2">2</button><button data-c="3">3</button><button data-c="4">4</button></div>
+        </div>
+        <div>
+          <label>Bordform</label>
+          <div class="seg"><button id="shapeRect">Rektangulært</button><button id="shapeRound">Rundt</button></div>
+        </div>
+      </div>
+      <div id="tables"></div>
+      <div class="mute" id="total" style="margin-top:10px"></div>
+      <div class="tbl" id="rules"><b>Regler</b> <span class="mute">– bruges når der laves en ny permutation</span>
+        <label class="chk"><input type="checkbox" id="ruleSeat"> <span><b>Regel 1: Hot Seat</b> – undgå at sidde på samme plads</span></label>
+        <label class="chk"><input type="checkbox" id="rule1"> <span><b>Regel 2: Smelly drunk – need fresh air</b> – undgå at sidde ved siden af samme spritter (også om hjørnet)</span></label>
+        <label class="chk"><input type="checkbox" id="opp"> <span><b>Regel 3: Face/Off</b> – undgå at sidde overfor samme spritter</span></label>
+        <div class="chk" id="rule3row" hidden style="align-items:flex-start"><input type="checkbox" id="rule3" aria-label="Regel 4">
+          <div style="flex:1"><b>Regel 4: Weakest Link</b> – svagt individ flytter kun ét sæde til højre pr. permutation
+            <select id="weak" class="wsel"></select></div></div>
+      </div>
+      <div class="tbl"><b>Personer</b> <span class="mute">– vælg navn til hver (ikke valgt = «Spritter 1» osv.)</span>
+        <div id="people"></div>
+      </div>
+      <div class="tbl"><button class="btn danger" id="resetAll" style="font-family:ui-monospace,Consolas,monospace">sudo rm -rf /</button> <span class="mute">– rydder borde, navne, regler (også Regel 4) og permutationer</span></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Bordplan</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="actions">
+      <button class="btn primary" id="next">＋ Ny permutation</button>
+      <button class="btn" id="shuffle">Bland denne</button>
+      <button class="btn danger" id="del">Slet permutation</button>
+      <button class="btn" id="print">Udskriv</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="hint">Træk en person hen på en anden plads for at bytte dem (også mellem borde). Tryk på en person for at se hele billedet og navnet. Det virker i alle permutationer. Røde streger = sad også sammen i en tidligere permutation.</div>
+  </div>
+
+  <div class="card">
+    <div class="room" id="room">
+      <div class="rack" id="rack" title="Vinreol"><button id="rackFlip" aria-label="Flyt vinreolen til den anden side">⇄</button></div>
+      <svg id="svg"></svg>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Plads</th><th>Person</th><th>Ved siden af</th><th>Overfor</th></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Historik</h2>
+    <div class="hint" id="histNote" style="margin:-4px 0 8px"></div>
+    <table>
+      <thead><tr><th>Spritter</th><th>Har siddet ved siden af</th><th>Har siddet overfor</th><th>Ikke mødt</th></tr></thead>
+      <tbody id="hist"></tbody>
+    </table>
+  </div>
+</main>
+</div>
+</section>
+</div>
+
+<!-- lydklip til advarslerne: læg filerne i mappen lyd/ (se lyd/LAES-MIG.txt); mangler de, er der bare ingen lyd -->
+<audio id="sndWeak" preload="auto"><source src="lyd/kinky-morten.mp3"><source src="lyd/kinky-morten.m4a"><source src="lyd/kinky-morten.wav"><source src="lyd/kinky-morten.ogg"></audio>
+<audio id="sndOk" preload="auto"><source src="lyd/affirmative.mp3"><source src="lyd/affirmative.m4a"><source src="lyd/affirmative.wav"><source src="lyd/affirmative.ogg"></audio>
+<audio id="sndReset" preload="auto"><source src="lyd/mind-is-going.mp3"><source src="lyd/mind-is-going.m4a"><source src="lyd/mind-is-going.wav"><source src="lyd/mind-is-going.ogg"></audio>
+<audio id="sndDave" preload="auto"><source src="lyd/dave.mp3"><source src="lyd/dave.m4a"><source src="lyd/dave.wav"><source src="lyd/dave.ogg"></audio>
+
+<div id="viewer" hidden>
+  <div class="vbox">
+    <button id="vClose" aria-label="Luk">✕</button>
+    <img id="vImg" alt="" hidden>
+    <div id="vName"></div>
+    <div id="vSeat"></div>
+  </div>
+</div>
+
+<div id="warn" hidden>
+  <div class="warnbox">
+    <div class="warnicon">🚨 ⚠️ 🚨</div>
+    <img id="warnImg" alt="" hidden>
+    <h2 id="warnTitle"></h2>
+    <div id="warnName"></div>
+    <p id="warnText"></p>
+    <input id="warnInput" type="text" maxlength="40" placeholder="Navn" autocomplete="off" hidden>
+    <div class="warnbtns" id="warnBtns"></div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const range = n => Array.from({length:n}, (_, i) => i);
+const shuffle = a => { a = a.slice(); for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+
+const T0 = { sT:3, sB:3, sL:1, sR:1, N:8, D:140 };
+const T1 = { sT:2, sB:2, sL:0, sR:0, N:8, D:140 };
+const NAMES = ['Stormester Thomas', 'Per', 'Kinky Morten', 'Prospect Anders', 'Prospect Kenneth', 'Søren', 'René', 'Kim Tudefjæs', 'Dr Albin', 'Lillemester Jess', 'Dirty Frank', 'Trym', 'Permutationsmester Jacques', 'Torben', 'Ph. Michael aka. Usselpinden'];
+NAMES.push('T-1000', 'Bishop', 'David', 'Roy Batty', 'T-800', 'Murphy', 'WALL-E', 'Ava', 'K-2SO', 'Rick Deckard', '"K" - KD6-3.7');
+const DEF = { theme:'jul', shape:'rect', tables:[T0], n:8, ruleSeat:true, rule1:true, opp:true, rule3:false, rule3Shown:false, weak:'', people:[], rounds:null, seeds:[], photoQ:'500', rack:'right', sound:true, cur:0 };
+let S = load();
+let selected = null;
+
+const tn = t => S.shape === 'round' ? t.N : t.sT + t.sB + t.sL + t.sR;
+const recount = () => { S.n = S.tables.reduce((a, t) => a + tn(t), 0); };
+
+function load() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem('bordplan')) || {}; } catch (e) {}
+  if (!s.tables) s.tables = [Object.assign({}, T0, { sT:s.sT ?? 3, sB:s.sB ?? 3, sL:s.sL ?? 1, sR:s.sR ?? 1, N:s.n ?? 8, D:s.D ?? 140 })];
+  s = Object.assign({}, DEF, s);
+  // Ældre gemte navne (fra tidligere versioner) ryddes; kun navne på listen er tilladt
+  if (!(s.v >= 2)) { s.people = []; delete s.names; }
+  // Fra version 3 dannes første permutation først ved tryk på «Ny permutation»
+  if (!(s.v >= 3)) s.rounds = [];
+  s.v = 3;
+  if (s.theme !== 'blue') s.theme = 'jul';
+  s.rule3Shown = s.rule3Shown || s.rule3;
+  s.people = s.people.map(x => typeof x === 'string' ? x : '');
+  s.n = s.tables.reduce((a, t) => a + (s.shape === 'round' ? t.N : t.sT + t.sB + t.sL + t.sR), 0);
+  if (!s.rounds || (s.rounds.length && s.rounds[0].length !== s.n)) s.rounds = [];
+  if (!Array.isArray(s.seeds)) s.seeds = [];
+  if (!['Original', '500', '300'].includes(s.photoQ)) s.photoQ = '500';
+  if (!['left', 'right', 'off'].includes(s.rack)) s.rack = 'right';
+  s.sound = s.sound !== false;
+  s.cur = Math.max(0, Math.min(s.cur, s.rounds.length-1));
+  return s;
+}
+const save = () => localStorage.setItem('bordplan', JSON.stringify(S));
+const nameOf = i => S.people[i] || 'Spritter ' + (i+1);
+
+/* ---------- Geometri: siddepladser og hvem der er "nabo" / "overfor" ---------- */
+function buildTable(t) {
+  const n = tn(t), off = 15, seats = [], rel = [], seen = new Set();
+  const add = (a, b, type) => { const k = Math.min(a,b) + '-' + Math.max(a,b) + type; if (a !== b && !seen.has(k)) { seen.add(k); rel.push([a,b,type]); } };
+  if (S.shape === 'round') {
+    const R = t.D/2;
+    for (let i = 0; i < n; i++) { const a = -Math.PI/2 + 2*Math.PI*i/n; seats.push({ x:(R+off)*Math.cos(a), y:(R+off)*Math.sin(a) }); }
+    for (let i = 0; i < n; i++) add(i, (i+1)%n, 'n');
+    if (n % 2 === 0) for (let i = 0; i < n/2; i++) add(i, i+n/2, 'o');
+    else for (let i = 0; i < n; i++) { add(i, (i+(n-1)/2)%n, 'o'); add(i, (i+(n+1)/2)%n, 'o'); }
+    return { seats, rel, shape:{ round:true, R }, hx:R, hy:R };
+  }
+  const nt = t.sT, nb = t.sB, nl = t.sL, nr = t.sR;
+  const L = Math.max(80, 70*Math.max(nt, nb)), W = Math.max(80, 70*Math.max(nl, nr));
+  const T = [], B = [], Lf = [], Rt = [];
+  for (let k = 0; k < nt; k++) { T.push(seats.length); seats.push({ x:-L/2 + (k+.5)*L/nt, y:-W/2-off }); }
+  for (let k = 0; k < nr; k++) { Rt.push(seats.length); seats.push({ x:L/2+off, y:-W/2 + (k+.5)*W/nr }); }
+  for (let k = 0; k < nb; k++) { B.push(seats.length); seats.push({ x:L/2 - (k+.5)*L/nb, y:W/2+off }); }
+  for (let k = 0; k < nl; k++) { Lf.push(seats.length); seats.push({ x:-L/2-off, y:W/2 - (k+.5)*W/nl }); }
+  for (const side of [T, Rt, B, Lf]) for (let k = 0; k+1 < side.length; k++) add(side[k], side[k+1], 'n');
+  // pladserne om hjørnet er også naboer
+  const sides = [T, Rt, B, Lf].filter(s => s.length);
+  if (sides.length > 1) sides.forEach((s, i) => add(s[s.length-1], sides[(i+1) % sides.length][0], 'n'));
+  const across = (from, to, c) => {
+    for (const a of from) {
+      const d = Math.min(...to.map(b => Math.abs(seats[a][c] - seats[b][c])));
+      for (const b of to) if (Math.abs(seats[a][c] - seats[b][c]) <= d + 1e-6*L) add(a, b, 'o');
+    }
+  };
+  if (nt && nb) { across(T, B, 'x'); across(B, T, 'x'); }
+  if (nl && nr) { across(Lf, Rt, 'y'); across(Rt, Lf, 'y'); }
+  return { seats, rel, shape:{ round:false, L, W }, hx:L/2, hy:W/2 };
+}
+// Borde stilles lodret under hinanden; pladser og relationer får fortløbende numre på tværs af borde.
+function layout() {
+  const seats = [], rel = [], tables = []; let minD = Infinity, prevExt = 0;
+  S.tables.forEach((t, j) => {
+    const b = buildTable(t), ext = b.hy + 15 + 38;
+    const cy = j ? tables[j-1].cy + prevExt + ext + 20 : 0, base = seats.length;
+    b.seats.forEach((s, i) => seats.push({ x:s.x, y:s.y + cy, t:j, k:i+1 }));
+    b.rel.forEach(([x, y, ty]) => rel.push([x+base, y+base, ty]));
+    for (let i = 0; i < b.seats.length; i++) for (let k = i+1; k < b.seats.length; k++) minD = Math.min(minD, Math.hypot(b.seats[i].x-b.seats[k].x, b.seats[i].y-b.seats[k].y));
+    tables.push({ cy, shape:b.shape, hx:b.hx, hy:b.hy });
+    prevExt = ext;
+  });
+  const r = Math.max(12, Math.min(38, 0.47*minD));
+  return { seats, rel, r, tables };
+}
+const activeRel = g => g.rel.filter(x => x[2] === 'n' ? S.rule1 : S.opp);
+
+/* ---------- Historik og løsning ---------- */
+function meetMatrix(upto, g) {
+  const M = range(S.n).map(() => new Array(S.n).fill(0)), rel = activeRel(g);
+  for (let k = 0; k < upto; k++) for (const [a,b] of rel) { const p = S.rounds[k][a], q = S.rounds[k][b]; M[p][q]++; M[q][p]++; }
+  return M;
+}
+// Regel 4: det svage individ rykker præcis ét sæde videre (med uret, til højre på tegningen) ved samme bord.
+function pinFor(g, prevRound) {
+  if (!S.rule3 || !prevRound) return null;
+  const person = S.people.slice(0, S.n).indexOf(S.weak);
+  if (person < 0) return null;
+  return { person, seat:nextSeat(g, prevRound.indexOf(person)) };
+}
+function nextSeat(g, seat) {
+  const s = g.seats[seat], first = g.seats.findIndex(x => x.t === s.t), size = g.seats.filter(x => x.t === s.t).length;
+  return first + (s.k % size);
+}
+// Regel 1 (samme plads) tæller mod alle tidligere permutationer i `hist`.
+const seatRepeats = (rd, hist) => S.ruleSeat ? range(rd.length).filter(i => hist.some(h => h[i] === rd[i])) : [];
+// Finder en fordeling med færrest mulige gentagelser i forhold til `hist` (tidligere permutationer) ved
+// gentagne forsøg med simulated annealing. H > 1 planlægger flere permutationer samlet og afleverer den første.
+function solveAhead(g, prev, hist, H = 1, ms = 1200) {
+  const n = S.n, rel = activeRel(g), W = [1, .6, .35].slice(0, H), base = meetMatrix(hist.length, g);
+  const B = new Int16Array(n*n); for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) B[x*n+y] = base[x][y];
+  const pin0 = pinFor(g, prev), pins = [];
+  for (let j = 0; j < H && pin0; j++) pins.push({ person:pin0.person, seat: j ? nextSeat(g, pins[j-1].seat) : pin0.seat });
+  let hard = 0;
+  const cost = P => {
+    const T = B.slice(); let total = 0; hard = 0;
+    for (let j = 0; j < H; j++) {
+      const p = P[j]; let c = 0;
+      for (const [a,b] of rel) c += T[p[a]*n+p[b]];
+      if (S.ruleSeat) for (let i = 0; i < n; i++) { for (const h of hist) if (h[i] === p[i]) c++; for (let k = 0; k < j; k++) if (P[k][i] === p[i]) c++; }
+      let soft = 0; const q = j ? P[j-1] : prev; if (q) for (let i = 0; i < n; i++) if (q[i] === p[i]) soft += .01;
+      total += W[j]*c + soft; hard += c;
+      for (const [a,b] of rel) { T[p[a]*n+p[b]]++; T[p[b]*n+p[a]]++; }
+    }
+    return total;
+  };
+  let best = null, bc = Infinity, bestHard = Infinity; const t0 = performance.now();
+  while (performance.now() - t0 < ms && bestHard > 0) {
+    const P = range(H).map(j => {
+      const p = shuffle(range(n)), pin = pins[j];
+      if (pin) { const k = p.indexOf(pin.person); [p[k], p[pin.seat]] = [p[pin.seat], p[k]]; }
+      return p;
+    });
+    let c = cost(P), ch = hard; const iters = 6000;
+    for (let it = 0; it < iters && ch > 0; it++) {
+      const T = 1.0 * (1 - it/iters) + 0.03, j = Math.floor(Math.random()*H), p = P[j], pin = pins[j];
+      const a = Math.floor(Math.random()*n), b = Math.floor(Math.random()*n);
+      if (a === b || (pin && (a === pin.seat || b === pin.seat))) continue;
+      [p[a], p[b]] = [p[b], p[a]];
+      const nc = cost(P);
+      if (nc <= c || Math.random() < Math.exp((c-nc)/T)) { c = nc; ch = hard; } else [p[a], p[b]] = [p[b], p[a]];
+    }
+    if (c < bc) { bc = c; bestHard = ch; best = P.map(p => p.slice()); }
+  }
+  const first = best[0];
+  let conflicts = rel.filter(([a,b]) => B[first[a]*n+first[b]] > 0).length;
+  if (S.ruleSeat) conflicts += seatRepeats(first, hist).length;
+  return { perm:first, conflicts };
+}
+
+/* ---------- Handlinger ---------- */
+async function structural() {
+  if (S.rounds.length > 1 && !(await ask('Nulstille permutationer?', 'Ændring af bord/antal nulstiller alle permutationer. Fortsæt?', 'Fortsæt'))) return false;
+  S.rounds = []; S.seeds = []; S.cur = 0; selected = null; return true;
+}
+// Prøver en ændring af opsætningen; fortryder den hvis den er ugyldig eller brugeren afbryder.
+async function tryChange(apply, undo) {
+  apply(); recount();
+  if (S.n < 2 || S.n > 40 || S.tables.some(t => tn(t) < 1) || !(await structural())) { undo(); recount(); }
+  renderSetup(); render();
+}
+let weakDeclined = false;
+const WEAK = 'Kinky Morten';
+// Blinkende advarsel i stedet for browserens alert. buttons: [{ label, cls, run }]
+let warnButtons = [];
+function showWarn({ title, name = '', text, buttons, calm = false, input = false, image = '' }) {
+  $('#warnInput').hidden = !input;
+  // et billede kan stå i stedet for overskriften (billedet indeholder selv teksten; title bruges som alternativ tekst)
+  const wi = $('#warnImg'); wi.hidden = !image; wi.alt = image ? title.replace(/<[^>]*>/g, ' ') : ''; if (image) wi.src = image;
+  $('#warnTitle').hidden = !!image;
+  $('#warn').classList.toggle('calm', calm);
+  $('#warnTitle').innerHTML = title; $('#warnName').textContent = name; $('#warnName').hidden = !name; $('#warnText').textContent = text;
+  warnButtons = buttons;
+  $('#warnBtns').innerHTML = buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-b="${i}">${b.label}</button>`).join('');
+  $('#warn').hidden = false;
+  if (input) setTimeout(() => $('#warnInput').focus(), 0);
+  if (!calm) try { navigator.vibrate && navigator.vibrate([250, 120, 250, 120, 400]); } catch (e) {}
+}
+// Rolig bekræftelsesboks (erstatter confirm); giver true ved OK og false ved Annuller.
+function ask(title, text, okLabel = 'OK') {
+  return new Promise(res => showWarn({
+    calm:true, title, text,
+    buttons: [{ label:'Annuller', run: () => res(false) }, { label:okLabel, cls:'yes', run: () => res(true) }]
+  }));
+}
+$('#warnInput').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); document.querySelector('#warnBtns .yes').click(); } };
+$('#warnBtns').onclick = e => {
+  const b = e.target.closest('[data-b]'); if (!b) return;
+  $('#warn').hidden = true; stopSounds(); warnButtons[+b.dataset.b].run();
+};
+// Lyd: afspilles direkte fra trykket (nødvendigt på iPhone/iPad); mangler klippet, sker der ingenting.
+function playSound(id) {
+  if (!S.sound) return;
+  const a = $(id); try { a.currentTime = 0; const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+}
+function stopSounds() { for (const id of ['#sndWeak', '#sndOk', '#sndReset', '#sndDave']) { const a = $(id); try { a.pause(); a.currentTime = 0; } catch (e) {} } }
+function warnWeak() {
+  playSound('#sndWeak');
+  showWarn({
+    title: 'Advarsel:<br>Svag spritter identificeret:', name: WEAK, text: 'Skal der dannes specialregler for svagt individ?',
+    buttons: [
+      { label:'Ja', cls:'yes', run: () => {
+        S.rule3 = S.rule3Shown = true; S.weak = WEAK; save();
+        $('#setup').open = true; renderSetup(); render();
+        document.getElementById('rules').scrollIntoView({ behavior:'smooth', block:'start' });
+      } },
+      { label:'Nej', run: () => { weakDeclined = true; nextRound(); } }
+    ]
+  });
+}
+function warnConflicts(n) {
+  playSound('#sndDave');
+  showWarn({
+    calm: true, image: encodeURIComponent("I'm sorry, Dave. I'm afraid I can't do that.jpg"),
+    title: "I'm sorry, Dave. I'm afraid I can't do that.", name: n + ' gentagelse' + (n === 1 ? '' : 'r'),
+    text: 'Permutation ' + (S.cur + 1) + ' er den bedste fordeling programmet fandt. Tryk «Prøv igen» for at lade det lede videre – ellers kan flere/større borde eller færre regler give plads til flere permutationer.',
+    buttons: [{ label:'Prøv igen', run: shuffleCurrent }, { label:'OK', cls:'yes', run: () => {} }]
+  });
+}
+function nextRound() {
+  if (!S.rule3 && !weakDeclined && S.people.slice(0, S.n).includes(WEAK)) { warnWeak(); return; }
+  const g = layout(), prevRound = S.rounds[S.rounds.length-1];
+  const { perm, conflicts } = solveAhead(g, prevRound, S.rounds);
+  S.rounds.push(perm); S.seeds[S.rounds.length-1] = newSeeds(); S.cur = S.rounds.length-1; selected = null;
+  save(); render();
+  if (conflicts) warnConflicts(conflicts); else playSound('#sndOk');
+}
+function shuffleCurrent() {
+  const g = layout(), { perm, conflicts } = solveAhead(g, S.rounds[S.cur-1], S.rounds.slice(0, S.cur));
+  S.rounds[S.cur] = perm; S.seeds[S.cur] = newSeeds(); selected = null; save(); render();
+  if (conflicts) warnConflicts(conflicts); else playSound('#sndOk');
+}
+function delRound() {
+  if (!S.rounds.length) return;
+  S.rounds.splice(S.cur, 1); S.seeds.splice(S.cur, 1); S.cur = Math.max(0, Math.min(S.cur, S.rounds.length-1)); selected = null; save(); render();
+}
+// Tryk på en plads: vis hele billedet (uden beskæring) og det fulde navn. Bytte sker ved at trække.
+function tapSeat(i) {
+  if (!S.rounds.length) return;
+  const rd = S.rounds[S.cur], p = rd[i], s = lastLayout.seats[i], url = photoFor(p, S.cur);
+  $('#vName').textContent = nameOf(p);
+  $('#vSeat').textContent = 'Permutation ' + (S.cur + 1) + ' · ' + (S.tables.length > 1 ? 'Bord ' + (s.t + 1) + ' · ' : '') + 'plads ' + s.k;
+  const img = $('#vImg');
+  img.hidden = !url;
+  if (url) { // hele billedet hentes fra Original; findes det ikke dér, bruges den viste udgave
+    const orig = url.replace(/fotos\/(500|300)\//, 'fotos/Original/');
+    img.onerror = () => { img.onerror = null; img.src = url; };
+    img.src = orig;
+  }
+  $('#viewer').hidden = false;
+}
+const closeViewer = () => { $('#viewer').hidden = true; };
+
+/* ---------- Billeder: <Navn>.jpg, <Navn>_2.jpg, <Navn>_3.jpg … i fotos/<Original|500|300>/ eller fotos/ ---------- */
+const photos = {}; // navn -> liste af billed-urls (standardbilledet først); tom liste hvis der ingen er
+const photoBase = name => name.replace(/[<>:"\/\\|?*]/g, '').replace(/\s+/g, ' ').trim(); // tegn der ikke må stå i filnavne fjernes
+const photoDirs = () => [...new Set(['fotos/' + S.photoQ + '/', 'fotos/Original/', 'fotos/'])], PHOTO_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'JPG', 'PNG', 'JPEG'];
+const probe = url => new Promise(res => { const im = new Image(); im.onload = () => res(true); im.onerror = () => res(false); im.src = url; });
+async function findPhoto(base) { // første fil der findes for et filnavn (uden endelse)
+  for (const dir of photoDirs()) for (const ext of PHOTO_EXTS) {
+    const url = dir + encodeURIComponent(base) + '.' + ext;
+    if (await probe(url)) return url;
+  }
+  return null;
+}
+async function loadPhoto(name) {
+  if (!name || name in photos) return;
+  photos[name] = [];
+  const base = photoBase(name), std = await findPhoto(base);
+  if (!std) return;
+  photos[name].push(std); render();
+  for (let i = 2; i <= 9; i++) { // _2, _3 … til første hul
+    const url = await findPhoto(base + '_' + i);
+    if (!url) break;
+    photos[name].push(url); render();
+  }
+}
+const ensurePhotos = () => S.people.slice(0, S.n).forEach(loadPhoto);
+// Permutation 1 bruger standardbilledet; i de næste trækkes et tilfældigt billede pr. person (trækket gemmes pr. permutation).
+const newSeeds = () => range(S.n).map(() => Math.random());
+function photoFor(person, roundIdx) {
+  const list = S.people[person] && photos[S.people[person]];
+  if (!list || !list.length) return null;
+  const seed = roundIdx > 0 ? ((S.seeds[roundIdx] || [])[person] || 0) : 0;
+  return list[Math.min(list.length - 1, Math.floor(seed * list.length))];
+}
+
+/* ---------- Visning ---------- */
+// Julefarver: røde, grønne og guldtoner i flere lyshedsgrader, så hver spritter får sin egen farve.
+const festive = p => `hsl(${[350, 135, 42, 10, 160, 28][p % 6]},${p >= 18 ? 35 : 58}%,${[80, 88, 72][Math.floor(p / 6) % 3]}%)`;
+// Farver i tegningen (SVG) pr. tema; resten af farverne styres af CSS-variabler under data-theme.
+const THEMES = {
+  blue: { brand:'#1f3a5f', table:'#e9d8bd', tableLine:'#b39a73', tableW:3, label:'#8a7550', seatLine:'#5a6b82', empty:'#f1f3f6', target:'#2f80ed', fill: p => `hsl(${Math.round(p*360/S.n)},70%,82%)` },
+  jul:  { brand:'#7b1a24', table:'#fbf3dc', tableLine:'#c9a227', tableW:4, label:'#9a7b1b', seatLine:'#7b1a24', empty:'#f6efe0', target:'#c9a227', fill: festive }
+};
+const th = () => THEMES[S.theme];
+function applyTheme() {
+  document.documentElement.dataset.theme = S.theme;
+  document.querySelector('meta[name="theme-color"]').content = th().brand;
+  document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.th === S.theme));
+  document.querySelectorAll('#qSeg button').forEach(b => b.classList.toggle('on', b.dataset.q === S.photoQ));
+  document.querySelectorAll('#rackSeg button').forEach(b => b.classList.toggle('on', b.dataset.r === S.rack));
+  document.querySelectorAll('#sndSeg button').forEach(b => b.classList.toggle('on', (b.dataset.s === '1') === S.sound));
+  $('#room').className = 'room ' + S.rack;
+}
+function render() {
+  const g = layout(), rd = S.rounds[S.cur], M = meetMatrix(S.cur, g), rel = activeRel(g), n = S.n, r = g.r, multi = S.tables.length > 1;
+  lastLayout = g;
+  const bad = rd ? rel.filter(([a,b]) => M[rd[a]][rd[b]] > 0) : [];
+  const sameSeat = new Set(rd ? seatRepeats(rd, S.rounds.slice(0, S.cur)) : []);
+
+  $('#tabs').innerHTML = S.rounds.map((_, k) => `<button class="tab${k === S.cur ? ' on' : ''}" data-k="${k}">Permutation ${k+1}</button>`).join('');
+  $('#del').style.display = $('#shuffle').style.display = rd ? '' : 'none';
+  const st = $('#status');
+  if (!rd) { st.className = 'status info'; st.textContent = 'Ingen permutation endnu – tryk «Ny permutation» for at danne den første.'; }
+  else if (S.cur === 0) { st.className = 'status info'; st.textContent = 'Første permutation – ingen tidligere pladser at sammenligne med.'; }
+  else if (!bad.length && !sameSeat.size) { st.className = 'status ok'; st.textContent = '✓ ' + ([S.ruleSeat && 'Regel 1', S.rule1 && 'Regel 2', S.opp && 'Regel 3', S.rule3 && S.people.slice(0, S.n).includes(S.weak) && 'Regel 4'].filter(Boolean).join(', ') || 'Ingen regler valgt') + (S.ruleSeat || S.rule1 || S.opp || S.rule3 ? ' er overholdt.' : '.'); }
+  else { st.className = 'status bad'; st.textContent = (bad.length + sameSeat.size) + ' gentagelse(r) i forhold til tidligere permutationer' + (sameSeat.size ? ' (' + sameSeat.size + ' på samme plads)' : '') + '.'; }
+
+  // SVG
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of g.seats) { minX = Math.min(minX, s.x-r); maxX = Math.max(maxX, s.x+r); minY = Math.min(minY, s.y-r); maxY = Math.max(maxY, s.y+r); }
+  for (const t of g.tables) { minX = Math.min(minX, -t.hx); maxX = Math.max(maxX, t.hx); minY = Math.min(minY, t.cy-t.hy); maxY = Math.max(maxY, t.cy+t.hy); }
+  const pad = 12;
+  let h = `<svg id="svg" viewBox="${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}" xmlns="http://www.w3.org/2000/svg">`;
+  g.tables.forEach((t, j) => {
+    const sh = t.shape;
+    h += sh.round
+      ? `<circle cx="0" cy="${t.cy}" r="${sh.R}" fill="${th().table}" stroke="${th().tableLine}" stroke-width="${th().tableW}"/>`
+      : `<rect x="${-sh.L/2}" y="${t.cy - sh.W/2}" width="${sh.L}" height="${sh.W}" rx="8" fill="${th().table}" stroke="${th().tableLine}" stroke-width="${th().tableW}"/>`;
+    if (multi) h += `<text x="0" y="${t.cy}" dy=".35em" text-anchor="middle" font-size="${Math.max(10, Math.min(22, t.hy/2.5))}" fill="${th().label}" font-weight="600">Bord ${j+1}</text>`;
+  });
+  for (const [a,b] of bad) h += `<line x1="${g.seats[a].x}" y1="${g.seats[a].y}" x2="${g.seats[b].x}" y2="${g.seats[b].y}" stroke="#d64545" stroke-width="3" stroke-dasharray="6 4"/>`;
+  const fs = Math.max(6, Math.min(16, r*0.48));
+  g.seats.forEach((s, i) => {
+    const p = rd ? rd[i] : null, full = rd ? nameOf(p) : String(s.k), max = Math.max(3, Math.floor(2*r*0.92/(fs*0.56)));
+    const label = full.length > max ? full.slice(0, max-1) + '…' : full;
+    const fill = rd ? th().fill(p) : th().empty;
+    const url = rd && photoFor(p, S.cur);
+    h += `<g class="seat" data-seat="${i}">${sameSeat.has(i) ? `<circle cx="${s.x}" cy="${s.y}" r="${r+5}" fill="none" stroke="#d64545" stroke-width="3" stroke-dasharray="6 4"/>` : ''}<circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}"/>`;
+    if (url) { // billedet beskæres til cirklen (centreret, med fokus på toppen); navnet står på et bånd nederst
+      const fs2 = Math.max(5, fs*0.78), max2 = Math.max(3, Math.floor(2*r*0.85/(fs2*0.56))), l2 = full.length > max2 ? full.slice(0, max2-1) + '…' : full;
+      h += `<clipPath id="cp${i}"><circle cx="${s.x}" cy="${s.y}" r="${r}"/></clipPath>`
+         + `<image href="${esc(url)}" x="${s.x-r}" y="${s.y-r}" width="${2*r}" height="${2*r}" preserveAspectRatio="xMidYMin slice" clip-path="url(#cp${i})" pointer-events="none"/>`
+         + `<rect x="${s.x-r}" y="${s.y+r*0.38}" width="${2*r}" height="${r*0.62}" fill="rgba(0,0,0,.58)" clip-path="url(#cp${i})" pointer-events="none"/>`
+         + `<text x="${s.x}" y="${s.y+r*0.69}" dy=".35em" text-anchor="middle" font-size="${fs2}" fill="#fff" font-weight="600" pointer-events="none">${esc(l2)}</text>`;
+    } else h += `<text x="${s.x}" y="${s.y}" dy=".35em" text-anchor="middle" font-size="${fs}" fill="#1c2430" pointer-events="none">${esc(label)}</text>`;
+    h += `<circle class="oc" cx="${s.x}" cy="${s.y}" r="${r}" fill="none" stroke="${selected === i ? '#000' : th().seatLine}" stroke-width="${selected === i ? 4 : 1.5}"${rd ? '' : ' stroke-dasharray="4 3"'}/></g>`;
+  });
+  $('#svg').outerHTML = h + '</svg>';
+
+  // Liste
+  const nb = range(n).map(() => ({ n:[], o:[] }));
+  if (rd) for (const [a,b,t] of g.rel) { nb[a][t].push(nameOf(rd[b])); nb[b][t].push(nameOf(rd[a])); }
+  $('#list').innerHTML = range(n).map(i => {
+    const s = g.seats[i];
+    return `<tr><td>${multi ? 'Bord ' + (s.t+1) + ' · ' : ''}${s.k}</td><td><b>${rd ? esc(nameOf(rd[i])) : '–'}</b></td><td>${esc(nb[i].n.join(', '))}</td><td>${S.opp ? esc(nb[i].o.join(', ')) : '–'}</td></tr>`;
+  }).join('');
+
+  // Historik: samlet over alle permutationer, uanset hvilke regler der er slået til
+  const hn = range(n).map(() => ({ n:new Map(), o:new Map() }));
+  for (const round of S.rounds) for (const [a,b,t] of g.rel) {
+    const p = round[a], q = round[b];
+    hn[p][t].set(q, (hn[p][t].get(q) || 0) + 1); hn[q][t].set(p, (hn[q][t].get(p) || 0) + 1);
+  }
+  const fmt = m => [...m].sort((x, y) => y[1] - x[1] || nameOf(x[0]).localeCompare(nameOf(y[0]), 'da'))
+    .map(([q, c]) => c > 1 ? `<span class="rep">${esc(nameOf(q))} ×${c}</span>` : esc(nameOf(q))).join(', ') || '–';
+  $('#histNote').textContent = S.rounds.length ? 'Efter ' + S.rounds.length + ' permutation' + (S.rounds.length === 1 ? '' : 'er') + '. Rødt = siddet sammen flere gange. «Ikke mødt» = antal spritter, de endnu ikke har siddet ved siden af eller overfor.' : '';
+  $('#hist').innerHTML = S.rounds.length ? range(n).map(p => {
+    const met = new Set([...hn[p].n.keys(), ...hn[p].o.keys()]);
+    return `<tr><td><b>${esc(nameOf(p))}</b></td><td>${fmt(hn[p].n)}</td><td>${fmt(hn[p].o)}</td><td>${n - 1 - met.size}</td></tr>`;
+  }).join('') : '<tr><td colspan="4" class="mute">Ingen permutationer endnu.</td></tr>';
+  save();
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderSetup() {
+  const round = S.shape === 'round', multi = S.tables.length > 1;
+  $('#shapeRect').classList.toggle('on', !round); $('#shapeRound').classList.toggle('on', round);
+  document.querySelectorAll('#cnt button').forEach(b => b.classList.toggle('on', +b.dataset.c === S.tables.length));
+  const f = (j, k, label, min, max, v) => `<div><label>${label}<input type="number" min="${min}" max="${max}" inputmode="numeric" data-t="${j}" data-k="${k}" value="${v}"></label></div>`;
+  // Felterne genopbygges kun, når strukturen ændres – ellers mister Tab-tasten sit næste felt.
+  const sig = S.shape + S.tables.length;
+  if ($('#tables').dataset.sig !== sig) {
+    $('#tables').dataset.sig = sig;
+    $('#tables').innerHTML = S.tables.map((t, j) => `<div class="tbl"><b>${multi ? 'Bord ' + (j+1) : 'Bord'}</b> <span class="mute" data-cnt="${j}"></span><div class="grid">`
+      + (round
+        ? f(j, 'N', 'Antal personer', 1, 40, t.N) + f(j, 'D', 'Diameter (cm)', 40, 1000, t.D)
+        : f(j, 'sT', 'Personer øverst', 0, 20, t.sT) + f(j, 'sB', 'Personer nederst', 0, 20, t.sB) + f(j, 'sL', 'Personer venstre ende', 0, 20, t.sL) + f(j, 'sR', 'Personer højre ende', 0, 20, t.sR))
+      + '</div></div>').join('');
+  }
+  S.tables.forEach((t, j) => {
+    document.querySelector(`[data-cnt="${j}"]`).textContent = '– ' + tn(t) + ' personer';
+    document.querySelectorAll(`#tables input[data-t="${j}"]`).forEach(el => { if (document.activeElement !== el || el.dataset.k !== 'D') el.value = t[el.dataset.k]; });
+  });
+  $('#total').textContent = 'I alt ' + S.n + ' personer';
+  $('#ruleSeat').checked = S.ruleSeat; $('#rule1').checked = S.rule1; $('#opp').checked = S.opp;
+  renderPeople();
+}
+function renderRule3() {
+  $('#rule3row').hidden = !S.rule3Shown;
+  $('#rule3').checked = S.rule3;
+  const names = S.people.slice(0, S.n).filter(Boolean);
+  const opts = '<option value="">Vælg spritter…</option>' + names.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if ($('#weak').dataset.opts !== opts) { $('#weak').dataset.opts = opts; $('#weak').innerHTML = opts; }
+  $('#weak').value = names.includes(S.weak) ? S.weak : '';
+  $('#weak').disabled = !S.rule3;
+}
+// Én rulleliste pr. person; navne der allerede er valgt andre steder er deaktiveret.
+function renderPeople() {
+  const used = new Set(S.people.slice(0, S.n).filter(Boolean));
+  const customOf = cur => cur && !NAMES.includes(cur) ? cur : '';
+  const opts = cur => '<option value="">Vælg navn…</option>' + NAMES.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')
+    + (customOf(cur) ? `<option value="${esc(cur)}">${esc(cur)}</option>` : '') + '<option value="__custom__">✎ Skriv eget navn…</option>';
+  const box = $('#people');
+  if (box.querySelectorAll('select').length !== S.n)
+    box.innerHTML = range(S.n).map(i => `<div class="prow"><label for="p${i}">Spritter ${i+1}:</label><select id="p${i}" data-p="${i}"></select></div>`).join('');
+  // opdater på stedet (kun hvis valgmulighederne ændres), så fokus bevares
+  box.querySelectorAll('select').forEach((sel, i) => {
+    const cur = S.people[i] || '';
+    if (sel.dataset.custom === undefined || sel.dataset.custom !== customOf(cur)) { sel.dataset.custom = customOf(cur); sel.innerHTML = opts(cur); }
+    sel.querySelectorAll('option').forEach(o => { o.disabled = !!o.value && o.value !== '__custom__' && o.value !== cur && used.has(o.value); });
+    sel.value = cur;
+  });
+  renderRule3();
+  ensurePhotos();
+}
+// Navn skrevet i en rolig dialog (erstatter prompt).
+function askText(title, text) {
+  return new Promise(res => {
+    $('#warnInput').value = '';
+    showWarn({ calm:true, input:true, title, text, buttons: [
+      { label:'Annuller', run: () => res(null) },
+      { label:'OK', cls:'yes', run: () => res($('#warnInput').value.trim()) }
+    ] });
+  });
+}
+
+/* ---------- Events ---------- */
+function setShape(shape) {
+  if (S.shape === shape) return;
+  const old = S.shape; tryChange(() => { S.shape = shape; }, () => { S.shape = old; });
+}
+function setCount(c) {
+  if (S.tables.length === c) return;
+  const old = S.tables.slice();
+  tryChange(() => { S.tables = range(c).map(j => old[j] || Object.assign({}, T1)); }, () => { S.tables = old; });
+}
+$('#shapeRect').onclick = () => setShape('rect');
+$('#shapeRound').onclick = () => setShape('round');
+$('#cnt').onclick = e => { const b = e.target.closest('[data-c]'); if (b) setCount(+b.dataset.c); };
+$('#tables').addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.k !== 'D' || el.value === '') return;
+  S.tables[+el.dataset.t].D = Math.max(40, Math.min(1000, parseInt(el.value) || 40)); render();
+});
+$('#tables').addEventListener('change', e => {
+  const el = e.target, k = el.dataset.k;
+  if (!k || k === 'D') return;
+  const t = S.tables[+el.dataset.t], old = t[k];
+  tryChange(() => { t[k] = Math.max(k === 'N' ? 1 : 0, Math.min(k === 'N' ? 40 : 20, parseInt(el.value) || 0)); }, () => { t[k] = old; });
+});
+$('#ruleSeat').onchange = () => { S.ruleSeat = $('#ruleSeat').checked; render(); };
+$('#rule1').onchange =() => { S.rule1 = $('#rule1').checked; render(); };
+$('#opp').onchange = () => { S.opp = $('#opp').checked; render(); };
+$('#rule3').onchange = () => { S.rule3 = $('#rule3').checked; renderRule3(); render(); };
+$('#weak').onchange = () => { S.weak = $('#weak').value; render(); };
+$('#people').addEventListener('change', async e => {
+  const i = +e.target.dataset.p; let v = e.target.value;
+  if (v === '__custom__') {
+    const typed = await askText('Eget navn', 'Skriv navn til Spritter ' + (i+1));
+    const taken = typed && S.people.some((p, k) => k !== i && p && p.toLowerCase() === typed.toLowerCase());
+    v = typed && !taken ? typed : (S.people[i] || '');
+  }
+  S.people[i] = v; renderPeople(); render();
+});
+$('#tabs').onclick = e => { const b = e.target.closest('[data-k]'); if (b) { S.cur = +b.dataset.k; selected = null; render(); } };
+document.addEventListener('click', e => { if (suppressClick) return; const s = e.target.closest('.seat'); if (s) tapSeat(+s.dataset.seat); });
+
+/* ---------- Træk og slip: flyt en person hen på en anden plads for at bytte ---------- */
+let lastLayout = null, drag = null, suppressClick = false;
+function svgPoint(e) {
+  const svg = $('#svg'), p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function seatAt(e, except) {
+  const p = svgPoint(e); let best = null, bd = lastLayout.r * 1.4;
+  lastLayout.seats.forEach((s, i) => { const d = Math.hypot(s.x - p.x, s.y - p.y); if (i !== except && d < bd) { bd = d; best = i; } });
+  return best;
+}
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.seat');
+  if (g && S.rounds.length) drag = { i:+g.dataset.seat, g, x0:e.clientX, y0:e.clientY, on:false, target:null };
+});
+document.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+  if (!drag.on) {
+    if (Math.hypot(dx, dy) < 8) return;
+    drag.on = true; drag.g.parentNode.appendChild(drag.g); drag.g.style.opacity = .85;
+  }
+  const m = $('#svg').getScreenCTM();
+  drag.g.setAttribute('transform', `translate(${dx/m.a} ${dy/m.d})`);
+  const t = seatAt(e, drag.i);
+  if (t !== drag.target) {
+    const mark = (i, on) => { if (i !== null) { const c = document.querySelector(`.seat[data-seat="${i}"] circle.oc`); c.setAttribute('stroke', on ? th().target : (selected === i ? '#000' : th().seatLine)); c.setAttribute('stroke-width', on ? 5 : (selected === i ? 4 : 1.5)); } };
+    mark(drag.target, false); mark(t, true); drag.target = t;
+  }
+  e.preventDefault();
+});
+document.addEventListener('pointerup', e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.on) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 60);
+  const t = seatAt(e, d.i);
+  if (t !== null) { const r = S.rounds[S.cur]; [r[d.i], r[t]] = [r[t], r[d.i]]; save(); }
+  selected = null; render();
+});
+document.addEventListener('pointercancel', () => { if (drag && drag.on) render(); drag = null; });
+document.addEventListener('touchmove', e => { if (drag && drag.on) e.preventDefault(); }, { passive:false });
+$('#viewer').onclick = e => { if (e.target.id === 'viewer' || e.target.id === 'vClose') closeViewer(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+function resetAll() {
+  const keep = { theme:S.theme, photoQ:S.photoQ, rack:S.rack, sound:S.sound }; // visningsindstillinger er ikke "valg", der nulstilles
+  localStorage.removeItem('bordplan');
+  S = Object.assign(load(), keep); S.tables = S.tables.map(t => ({ ...t }));
+  weakDeclined = false; selected = null;
+  for (const k in photos) delete photos[k];
+  applyTheme(); renderSetup(); render();
+  $('#setup').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+// Lyden startes direkte fra trykket på Ja (nødvendigt på iPhone/iPad), derefter nulstilles alt.
+$('#resetAll').onclick = () => showWarn({
+  calm:true, title:'Judgment Day – nulstil alle valg', text:'Borde, navne, regler (også Regel 4) og permutationer bliver slettet.',
+  buttons: [{ label:'Annuller', run: () => {} }, { label:'Ja', cls:'yes', run: () => { playSound('#sndReset'); resetAll(); } }]
+});
+$('#sndSeg').onclick = e => { const b = e.target.closest('[data-s]'); if (b) { S.sound = b.dataset.s === '1'; if (!S.sound) stopSounds(); applyTheme(); save(); } };
+$('#rackSeg').onclick =e => { const b = e.target.closest('[data-r]'); if (b) { S.rack = b.dataset.r; applyTheme(); save(); } };
+$('#rackFlip').onclick = () => { S.rack = S.rack === 'left' ? 'right' : 'left'; applyTheme(); save(); };
+$('#qSeg').onclick = e => { // skift billedmappe: glem fundne billeder og led igen
+  const b = e.target.closest('[data-q]'); if (!b || b.dataset.q === S.photoQ) return;
+  S.photoQ = b.dataset.q; for (const k in photos) delete photos[k];
+  applyTheme(); ensurePhotos(); render();
+};
+$('#themeSeg').onclick =e => { const b = e.target.closest('[data-th]'); if (b) { S.theme = b.dataset.th; applyTheme(); render(); } };
+$('#next').onclick = nextRound;
+$('#shuffle').onclick = shuffleCurrent;
+$('#del').onclick = delRound;
+$('#print').onclick = () => window.print();
+
+const goTo = id => document.getElementById(id).scrollIntoView({ behavior:'smooth', inline:'start', block:'nearest' });
+$('#goApp').onclick = () => goTo('app');
+$('#goCover').onclick = () => goTo('cover');
+
+applyTheme(); renderSetup(); render();
+
+// Offline: service worker (kræver https – eller localhost). Mislykkes det, virker appen bare som før.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
