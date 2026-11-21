@@ -169,6 +169,7 @@
         <label>Lyd ved advarsler</label>
         <div class="seg" id="sndSeg"><button data-s="1">Til</button><button data-s="0">Fra</button></div>
       </div>
+      <div class="hint" id="offlineStatus" style="margin-top:10px"></div>
       <div style="margin-top:10px">
         <label>Vinreol ved bordplanen</label>
         <div class="seg" id="rackSeg"><button data-r="left">Venstre</button><button data-r="right">Højre</button><button data-r="off">Skjult</button></div>
@@ -931,6 +932,26 @@ applyTheme(); renderSetup(); render(); loadUploads();
 
 // Offline: service worker (kræver https – eller localhost). Mislykkes det, virker appen bare som før.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// Statuslinje i Opsætning: er alle filer gemt til offline brug? Tjekkes igen, mens der hentes.
+async function offlineStatus(tries = 0) {
+  const el = $('#offlineStatus');
+  if (!('serviceWorker' in navigator) || !window.caches || !location.protocol.startsWith('http')) { el.textContent = 'Offline: virker ikke her (kræver en https-adresse).'; return; }
+  try {
+    if (!navigator.serviceWorker.controller) {
+      el.textContent = tries < 24 ? 'Offline: gøres klar … bliv på siden, mens der er net.' : 'Offline: ikke klar – genindlæs siden med net.';
+      if (tries < 24) setTimeout(() => offlineStatus(tries + 1), 2500);
+      return;
+    }
+    const want = ((await (await fetch('offline-filer.json')).json()).files || []).length;
+    const names = (await caches.keys()).filter(k => k.startsWith('bordplan-')).sort(), cache = await caches.open(names[names.length - 1]);
+    const have = (await cache.keys()).length;
+    if (have >= want) el.textContent = '✓ Offline klar – ' + have + ' filer er gemt på denne enhed.';
+    else { el.textContent = 'Offline: henter filer … (' + have + ' af ' + want + ') – bliv på siden, mens der er net.'; if (tries < 40) setTimeout(() => offlineStatus(tries + 1), 2500); }
+  } catch (e) { el.textContent = 'Offline: kunne ikke tjekkes.'; }
+}
+navigator.serviceWorker && navigator.serviceWorker.addEventListener('controllerchange', () => offlineStatus());
+setTimeout(offlineStatus, 1500);
 </script>
 </body>
 </html>
