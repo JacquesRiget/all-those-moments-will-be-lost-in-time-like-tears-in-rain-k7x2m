@@ -71,6 +71,19 @@
   @keyframes borderblink { 0% { border-color:#ff1a1a; } 50% { border-color:#ffd400; } }
   @keyframes blink { 50% { opacity:.25; } }
   @keyframes shake { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-6px) rotate(-.6deg); } 40% { transform:translateX(6px) rotate(.6deg); } 60% { transform:translateX(-4px); } 80% { transform:translateX(4px); } }
+  .cam { flex:none; width:44px; height:44px; border-radius:8px; border:1px solid var(--line); background:#fff; font-size:20px; cursor:pointer; padding:0; }
+  .cam:disabled { opacity:.35; cursor:default; }
+  .cam.has { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+  .camdel { font-size:16px; color:var(--bad); }
+  #cropper { position:fixed; inset:0; z-index:95; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #cropper[hidden] { display:none; }
+  .cbox { background:#fff; border:4px solid var(--hdrline); border-radius:14px; padding:14px; width:min(92vw,380px); text-align:center; }
+  #cName { font-size:20px; font-weight:700; color:var(--brand); margin-bottom:8px; }
+  #cCanvas { width:100%; max-width:320px; aspect-ratio:1; border-radius:10px; touch-action:none; cursor:grab; background:#222; }
+  .czoom { display:flex; align-items:center; gap:10px; font-size:14px; color:var(--ink); margin:10px 0 4px; }
+  .czoom input { flex:1; }
+  .cbtns { display:flex; gap:10px; margin-top:12px; }
+  .cbtns .btn { flex:1; padding:12px; }
   #viewer { position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.74); display:flex; align-items:center; justify-content:center; padding:16px; }
   #viewer[hidden] { display:none; }
   .vbox { position:relative; background:#fff; border:4px solid var(--hdrline); border-radius:14px; padding:12px; max-width:min(92vw,640px); text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.5); }
@@ -232,6 +245,17 @@
 <audio id="sndOk" preload="auto"><source src="lyd/affirmative.mp3"><source src="lyd/affirmative.m4a"><source src="lyd/affirmative.wav"><source src="lyd/affirmative.ogg"></audio>
 <audio id="sndReset" preload="auto"><source src="lyd/mind-is-going.mp3"><source src="lyd/mind-is-going.m4a"><source src="lyd/mind-is-going.wav"><source src="lyd/mind-is-going.ogg"></audio>
 <audio id="sndDave" preload="auto"><source src="lyd/dave.mp3"><source src="lyd/dave.m4a"><source src="lyd/dave.wav"><source src="lyd/dave.ogg"></audio>
+
+<input type="file" id="camInput" accept="image/*" hidden>
+<div id="cropper" hidden>
+  <div class="cbox">
+    <div id="cName"></div>
+    <canvas id="cCanvas" width="300" height="300"></canvas>
+    <label class="czoom">Zoom <input type="range" id="cZoom" min="1" max="4" step="0.01" value="1"></label>
+    <div class="hint" style="text-align:center">Træk billedet for at flytte det. Knib eller brug zoom.</div>
+    <div class="cbtns"><button class="btn" id="cCancel">Annuller</button><button class="btn primary" id="cSave">Brug billedet</button></div>
+  </div>
+</div>
 
 <div id="viewer" hidden>
   <div class="vbox">
@@ -503,7 +527,7 @@ function tapSeat(i) {
   const img = $('#vImg');
   img.hidden = !url;
   if (url) { // hele billedet hentes fra Original; findes det ikke dér, bruges den viste udgave
-    const orig = url.replace(/fotos\/(500|300)\//, 'fotos/Original/');
+    const orig = fullOf[url] || url.replace(/fotos\/(500|300)\//, 'fotos/Original/');
     img.onerror = () => { img.onerror = null; img.src = url; };
     img.src = orig;
   }
@@ -539,11 +563,97 @@ const ensurePhotos = () => S.people.slice(0, S.n).forEach(loadPhoto);
 // Permutation 1 bruger standardbilledet; i de næste trækkes et tilfældigt billede pr. person (trækket gemmes pr. permutation).
 const newSeeds = () => range(S.n).map(() => Math.random());
 function photoFor(person, roundIdx) {
-  const list = S.people[person] && photos[S.people[person]];
+  const name = S.people[person];
+  // et billede uploadet fra enheden er personens standardbillede; billeder fra mappen er de øvrige udgaver
+  const list = name && [...(uploads[name] ? [uploads[name].crop] : []), ...(photos[name] || [])];
   if (!list || !list.length) return null;
   const seed = roundIdx > 0 ? ((S.seeds[roundIdx] || [])[person] || 0) : 0;
   return list[Math.min(list.length - 1, Math.floor(seed * list.length))];
 }
+
+/* ---------- Egne billeder fra enheden (iPad: Fotos). Gemmes i IndexedDB på enheden, pr. navn ---------- */
+const uploads = {};  // navn -> { crop: blob-url (500x500 udsnit), full: blob-url (hele billedet) }
+const fullOf = {};   // blob-url til udsnit -> blob-url til hele billedet (bruges i visningen ved tryk)
+const idbDo = async (mode, fn) => {
+  const db = await new Promise((res, rej) => { const r = indexedDB.open('bordplan', 1); r.onupgradeneeded = () => r.result.createObjectStore('uploads', { keyPath: 'name' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return new Promise((res, rej) => { const tx = db.transaction('uploads', mode), out = fn(tx.objectStore('uploads')); tx.oncomplete = () => res(out && out.result); tx.onerror = () => rej(tx.error); });
+};
+function setUpload(name, cropBlob, fullBlob) {
+  if (uploads[name]) { URL.revokeObjectURL(uploads[name].crop); URL.revokeObjectURL(uploads[name].full); delete fullOf[uploads[name].crop]; }
+  uploads[name] = { crop: URL.createObjectURL(cropBlob), full: URL.createObjectURL(fullBlob) };
+  fullOf[uploads[name].crop] = uploads[name].full;
+}
+async function loadUploads() {
+  try { for (const r of await idbDo('readonly', s => s.getAll()) || []) setUpload(r.name, r.crop, r.full); renderPeople(); render(); } catch (e) {}
+}
+
+// Justering: træk billedet (eller knib) og brug zoom, til ansigtet sidder i cirklen.
+const CV = 300; let cropImg = null, cropName = '', cz = 1, cx = 0, cy = 0, camTarget = -1;
+const cropBase = () => Math.max(CV / cropImg.width, CV / cropImg.height) * cz;
+function clampCrop() {
+  const b = cropBase(), mx = Math.max(0, (cropImg.width * b - CV) / 2), my = Math.max(0, (cropImg.height * b - CV) / 2);
+  cx = Math.max(-mx, Math.min(mx, cx)); cy = Math.max(-my, Math.min(my, cy));
+}
+function drawCrop(canvas, size, guide) {
+  const ctx = canvas.getContext('2d'), k = size / CV, b = cropBase(), w = cropImg.width * b, h = cropImg.height * b;
+  ctx.fillStyle = '#222'; ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(cropImg, ((CV - w) / 2 + cx) * k, ((CV - h) / 2 + cy) * k, w * k, h * k);
+  if (guide) { // mørkt uden for cirklen, så man ser præcis det, der kommer med
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.rect(0, 0, size, size); ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2, true); ctx.fill('evenodd');
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+function openCropper(file, name) {
+  const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => {
+    URL.revokeObjectURL(url); cropImg = im; cropName = name; cz = 1; $('#cZoom').value = 1; cx = 0;
+    cy = Math.max(0, (im.height * cropBase() - CV) / 2); // stående billeder starter med toppen (ansigtet) synlig
+    clampCrop(); $('#cName').textContent = name; $('#cropper').hidden = false; drawCrop($('#cCanvas'), CV, true);
+  };
+  im.onerror = () => { URL.revokeObjectURL(url); showWarn({ calm:true, title:'Billedet kunne ikke læses', text:'Prøv et andet billede (JPEG eller PNG).', buttons:[{ label:'OK', cls:'yes', run: () => {} }] }); };
+  im.src = url;
+}
+const toBlob = (canvas, q) => new Promise(res => canvas.toBlob(res, 'image/jpeg', q));
+async function saveCrop() {
+  const off = document.createElement('canvas'); off.width = off.height = 500; drawCrop(off, 500, false);
+  const m = Math.min(1, 1400 / Math.max(cropImg.width, cropImg.height)), fc = document.createElement('canvas');
+  fc.width = Math.round(cropImg.width * m); fc.height = Math.round(cropImg.height * m); fc.getContext('2d').drawImage(cropImg, 0, 0, fc.width, fc.height);
+  const crop = await toBlob(off, .9), full = await toBlob(fc, .85);
+  try { await idbDo('readwrite', s => s.put({ name: cropName, crop, full })); } catch (e) {}
+  setUpload(cropName, crop, full);
+  $('#cropper').hidden = true; cropImg = null; renderPeople(); render();
+}
+{ // træk og knib i justeringsvinduet
+  const cv = $('#cCanvas'), ptrs = new Map(); let pinch = 0;
+  const redraw = () => { clampCrop(); drawCrop(cv, CV, true); };
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x:e.clientX, y:e.clientY }); pinch = 0; });
+  cv.addEventListener('pointermove', e => {
+    const p = ptrs.get(e.pointerId); if (!p || !cropImg) return;
+    const f = CV / cv.clientWidth;
+    if (ptrs.size === 1) { cx += (e.clientX - p.x) * f; cy += (e.clientY - p.y) * f; }
+    p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch) { cz = Math.max(1, Math.min(4, cz * d / pinch)); $('#cZoom').value = cz; } pinch = d; }
+    redraw();
+  });
+  for (const t of ['pointerup', 'pointercancel']) cv.addEventListener(t, e => { ptrs.delete(e.pointerId); pinch = 0; });
+  $('#cZoom').oninput = () => { if (!cropImg) return; cz = +$('#cZoom').value; redraw(); };
+}
+$('#cCancel').onclick = () => { $('#cropper').hidden = true; cropImg = null; };
+$('#cSave').onclick = saveCrop;
+$('#people').addEventListener('click', e => {
+  const cam = e.target.closest('[data-cam]'), del = e.target.closest('[data-camdel]');
+  if (cam && !cam.disabled) { camTarget = +cam.dataset.cam; $('#camInput').click(); }
+  if (del) {
+    const name = S.people[+del.dataset.camdel];
+    ask('Fjern eget billede?', 'Billedet af ' + name + ', du har valgt fra Fotos, fjernes fra denne enhed.', 'Fjern').then(async ok => {
+      if (!ok) return;
+      try { await idbDo('readwrite', s => s.delete(name)); } catch (er) {}
+      URL.revokeObjectURL(uploads[name].crop); URL.revokeObjectURL(uploads[name].full); delete fullOf[uploads[name].crop]; delete uploads[name];
+      renderPeople(); render();
+    });
+  }
+});
+$('#camInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f && S.people[camTarget]) openCropper(f, S.people[camTarget]); };
 
 /* ---------- Visning ---------- */
 // Julefarver: røde, grønne og guldtoner i flere lyshedsgrader, så hver spritter får sin egen farve.
@@ -674,13 +784,17 @@ function renderPeople() {
     + (customOf(cur) ? `<option value="${esc(cur)}">${esc(cur)}</option>` : '') + '<option value="__custom__">✎ Skriv eget navn…</option>';
   const box = $('#people');
   if (box.querySelectorAll('select').length !== S.n)
-    box.innerHTML = range(S.n).map(i => `<div class="prow"><label for="p${i}">Spritter ${i+1}:</label><select id="p${i}" data-p="${i}"></select></div>`).join('');
+    box.innerHTML = range(S.n).map(i => `<div class="prow"><label for="p${i}">Spritter ${i+1}:</label><select id="p${i}" data-p="${i}"></select>`
+      + `<button class="cam" data-cam="${i}" aria-label="Vælg eget billede fra Fotos" title="Vælg eget billede">📷</button>`
+      + `<button class="cam camdel" data-camdel="${i}" aria-label="Fjern eget billede" title="Fjern eget billede" hidden>✕</button></div>`).join('');
   // opdater på stedet (kun hvis valgmulighederne ændres), så fokus bevares
   box.querySelectorAll('select').forEach((sel, i) => {
     const cur = S.people[i] || '';
     if (sel.dataset.custom === undefined || sel.dataset.custom !== customOf(cur)) { sel.dataset.custom = customOf(cur); sel.innerHTML = opts(cur); }
     sel.querySelectorAll('option').forEach(o => { o.disabled = !!o.value && o.value !== '__custom__' && o.value !== cur && used.has(o.value); });
     sel.value = cur;
+    const row = sel.parentNode, cam = row.querySelector('.cam:not(.camdel)'), del = row.querySelector('.camdel');
+    cam.disabled = !cur; cam.classList.toggle('has', !!uploads[cur]); del.hidden = !uploads[cur];
   });
   renderRule3();
   ensurePhotos();
@@ -813,7 +927,7 @@ const goTo = id => document.getElementById(id).scrollIntoView({ behavior:'smooth
 $('#goApp').onclick = () => goTo('app');
 $('#goCover').onclick = () => goTo('cover');
 
-applyTheme(); renderSetup(); render();
+applyTheme(); renderSetup(); render(); loadUploads();
 
 // Offline: service worker (kræver https – eller localhost). Mislykkes det, virker appen bare som før.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
