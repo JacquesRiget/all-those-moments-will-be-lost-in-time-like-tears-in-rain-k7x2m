@@ -1,6 +1,6 @@
 // Service worker: gemmer appen og alle filer fra offline-filer.json, saa den virker uden net.
 // VERSION opdateres af lav-offline-liste.ps1; en ny version henter og gemmer alle filer paa ny.
-const VERSION = '20261121-015502';
+const VERSION = '20261121-021025';
 const CACHE = 'bordplan-' + VERSION;
 
 self.addEventListener('install', e => e.waitUntil((async () => {
