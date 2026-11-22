@@ -56,7 +56,7 @@
   .prow label { width:90px; flex:none; font-size:15px; color:var(--ink); }
   .prow select { flex:1; min-width:0; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
   /* ens højde på felter og rullelister (Safari på iPad gør dem ellers mindre) */
-  input[type=number], .prow select, .wsel { height:44px; font-size:16px; }
+  input[type=number], .prow select, .wsel, .fld { height:44px; font-size:16px; }
   .prow select { margin-top:0; }
   [hidden] { display:none !important; }
   .wsel { display:block; width:100%; margin-top:6px; font:inherit; padding:9px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
@@ -94,6 +94,8 @@
   #vImg[hidden] { display:none; }
   #vName { margin-top:10px; font-size:clamp(22px,6vw,32px); font-weight:700; line-height:1.15; color:var(--brand); word-break:break-word; }
   #vSeat { margin-top:4px; font-size:14px; color:var(--mute); }
+  #vLock { margin-top:12px; padding:12px 22px; font-size:17px; font-weight:600; }
+  #vLockHint { margin-top:6px; }
   #vClose { position:absolute; top:-16px; right:-16px; width:38px; height:38px; border-radius:50%; border:2px solid #fff; background:var(--brand); color:#fff; font-size:18px; cursor:pointer; }
   #warnImg { display:block; width:100%; border-radius:10px; margin:0 0 10px; }
   #warnImg[hidden] { display:none; }
@@ -109,7 +111,8 @@
   .tbl { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
   .mute { color:var(--mute); font-size:14px; font-weight:400; }
   label { display:block; font-size:13px; color:var(--mute); }
-  input[type=number], textarea { width:100%; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; margin-top:2px; }
+  input[type=number], textarea, .fld { width:100%; font:inherit; padding:8px; border:1px solid var(--line); border-radius:8px; margin-top:2px; }
+  select.fld { background:#fff; }
   textarea { min-height:110px; resize:vertical; }
   .seg { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-top:2px; }
   .seg button { flex:1; border:0; background:#fff; padding:9px; font:inherit; }
@@ -219,7 +222,7 @@
       <button class="btn" id="print">Udskriv</button>
     </div>
     <div class="status" id="status"></div>
-    <div class="hint">Træk en person hen på en anden plads for at bytte dem (også mellem borde). Tryk på en person for at se hele billedet og navnet. Det virker i alle permutationer. Røde streger = sad også sammen i en tidligere permutation.</div>
+    <div class="hint">Træk en person hen på en anden plads for at bytte dem (også mellem borde). Tryk på en person for at se hele billedet og navnet – og for at låse pladsen (🔒), så personen ikke flyttes ved ny permutation. Røde streger = sad også sammen i en tidligere permutation.</div>
   </div>
 
   <div class="card">
@@ -273,6 +276,8 @@
     <img id="vImg" alt="" hidden>
     <div id="vName"></div>
     <div id="vSeat"></div>
+    <button class="btn" id="vLock"></button>
+    <div class="hint" id="vLockHint" style="text-align:center"></div>
   </div>
 </div>
 
@@ -283,7 +288,7 @@
     <h2 id="warnTitle"></h2>
     <div id="warnName"></div>
     <p id="warnText"></p>
-    <input id="warnInput" type="text" maxlength="40" placeholder="Navn" autocomplete="off" hidden>
+    <input id="warnInput" type="text" inputmode="text" enterkeyhint="done" autocapitalize="words" autocorrect="off" spellcheck="false" maxlength="40" placeholder="Navn" autocomplete="off" hidden>
     <div class="warnbtns" id="warnBtns"></div>
   </div>
 </div>
@@ -323,6 +328,7 @@ function load() {
   if (!['Original', '500', '300'].includes(s.photoQ)) s.photoQ = '500';
   if (!['left', 'right', 'off'].includes(s.rack)) s.rack = 'right';
   s.sound = s.sound !== false; s.music = s.music !== false;
+  s.locks = Object.fromEntries(Object.entries(s.locks || {}).filter(([p, seat]) => Number.isInteger(seat) && +p < s.n && seat < s.n)); // låste pladser (person -> plads)
   s.cur = Math.max(0, Math.min(s.cur, s.rounds.length-1));
   return s;
 }
@@ -389,30 +395,40 @@ function meetMatrix(upto, g) {
 function pinFor(g, prevRound) {
   if (!S.rule3 || !prevRound) return null;
   const person = S.people.slice(0, S.n).indexOf(S.weak);
-  if (person < 0) return null;
-  return { person, seat:nextSeat(g, prevRound.indexOf(person)) };
+  if (person < 0 || person in S.locks) return null;                       // en låst person kan ikke flyttes af Regel 4
+  const seat = nextSeat(g, prevRound.indexOf(person));
+  return lockedSeat(seat) ? null : { person, seat };                      // og kan ikke rykke ind på en låst plads
 }
+// Låste pladser: personen sidder fast på samme plads i alle nye permutationer. S.locks: person -> plads.
+const lockList = () => Object.entries(S.locks).filter(([p, s]) => +p < S.n && s < S.n).map(([p, s]) => ({ person:+p, seat:s }));
+const lockedSeat = i => lockList().some(l => l.seat === i);
 function nextSeat(g, seat) {
   const s = g.seats[seat], first = g.seats.findIndex(x => x.t === s.t), size = g.seats.filter(x => x.t === s.t).length;
   return first + (s.k % size);
 }
 // Regel 1 (samme plads) tæller mod alle tidligere permutationer i `hist`.
-const seatRepeats = (rd, hist) => S.ruleSeat ? range(rd.length).filter(i => hist.some(h => h[i] === rd[i])) : [];
+const seatRepeats = (rd, hist) => S.ruleSeat ? range(rd.length).filter(i => !lockedSeat(i) && hist.some(h => h[i] === rd[i])) : [];   // låste pladser er undtaget
 // Finder en fordeling med færrest mulige gentagelser i forhold til `hist` (tidligere permutationer) ved
 // gentagne forsøg med simulated annealing. H > 1 planlægger flere permutationer samlet og afleverer den første.
 function solveAhead(g, prev, hist, H = 1, ms = 1200) {
   const n = S.n, rel = activeRel(g), W = [1, .6, .35].slice(0, H), base = meetMatrix(hist.length, g);
   const B = new Int16Array(n*n); for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) B[x*n+y] = base[x][y];
-  const pin0 = pinFor(g, prev), pins = [];
-  for (let j = 0; j < H && pin0; j++) pins.push({ person:pin0.person, seat: j ? nextSeat(g, pins[j-1].seat) : pin0.seat });
+  const pin0 = pinFor(g, prev), pins = [], locks = lockList(), lockSet = new Set(locks.map(l => l.seat));
+  for (let j = 0; j < H && pin0; j++) {
+    const seat = j ? nextSeat(g, pins[j-1].seat) : pin0.seat;
+    if (lockSet.has(seat)) break;
+    pins.push({ person:pin0.person, seat });
+  }
+  // fastlåste placeringer (låste personer + Regel 4's ryk) pr. permutation i planen
+  const fixed = range(H).map(j => pins[j] ? [...locks, pins[j]] : locks), fixedSeats = fixed.map(f => new Set(f.map(x => x.seat)));
   let hard = 0;
   const cost = P => {
     const T = B.slice(); let total = 0; hard = 0;
     for (let j = 0; j < H; j++) {
       const p = P[j]; let c = 0;
       for (const [a,b] of rel) c += T[p[a]*n+p[b]];
-      if (S.ruleSeat) for (let i = 0; i < n; i++) { for (const h of hist) if (h[i] === p[i]) c++; for (let k = 0; k < j; k++) if (P[k][i] === p[i]) c++; }
-      let soft = 0; const q = j ? P[j-1] : prev; if (q) for (let i = 0; i < n; i++) if (q[i] === p[i]) soft += .01;
+      if (S.ruleSeat) for (let i = 0; i < n; i++) { if (lockSet.has(i)) continue; for (const h of hist) if (h[i] === p[i]) c++; for (let k = 0; k < j; k++) if (P[k][i] === p[i]) c++; }
+      let soft = 0; const q = j ? P[j-1] : prev; if (q) for (let i = 0; i < n; i++) if (!lockSet.has(i) && q[i] === p[i]) soft += .01;
       total += W[j]*c + soft; hard += c;
       for (const [a,b] of rel) { T[p[a]*n+p[b]]++; T[p[b]*n+p[a]]++; }
     }
@@ -421,15 +437,15 @@ function solveAhead(g, prev, hist, H = 1, ms = 1200) {
   let best = null, bc = Infinity, bestHard = Infinity; const t0 = performance.now();
   while (performance.now() - t0 < ms && bestHard > 0) {
     const P = range(H).map(j => {
-      const p = shuffle(range(n)), pin = pins[j];
-      if (pin) { const k = p.indexOf(pin.person); [p[k], p[pin.seat]] = [p[pin.seat], p[k]]; }
+      const p = shuffle(range(n));
+      for (const f of fixed[j]) { const k = p.indexOf(f.person); [p[k], p[f.seat]] = [p[f.seat], p[k]]; }
       return p;
     });
     let c = cost(P), ch = hard; const iters = 6000;
     for (let it = 0; it < iters && ch > 0; it++) {
-      const T = 1.0 * (1 - it/iters) + 0.03, j = Math.floor(Math.random()*H), p = P[j], pin = pins[j];
+      const T = 1.0 * (1 - it/iters) + 0.03, j = Math.floor(Math.random()*H), p = P[j], fs = fixedSeats[j];
       const a = Math.floor(Math.random()*n), b = Math.floor(Math.random()*n);
-      if (a === b || (pin && (a === pin.seat || b === pin.seat))) continue;
+      if (a === b || fs.has(a) || fs.has(b)) continue;
       [p[a], p[b]] = [p[b], p[a]];
       const nc = cost(P);
       if (nc <= c || Math.random() < Math.exp((c-nc)/T)) { c = nc; ch = hard; } else [p[a], p[b]] = [p[b], p[a]];
@@ -445,7 +461,7 @@ function solveAhead(g, prev, hist, H = 1, ms = 1200) {
 /* ---------- Handlinger ---------- */
 async function structural() {
   if (S.rounds.length > 1 && !(await ask('Nulstille permutationer?', 'Ændring af bord/antal nulstiller alle permutationer. Fortsæt?', 'Fortsæt'))) return false;
-  S.rounds = []; S.seeds = []; S.cur = 0; selected = null; return true;
+  S.rounds = []; S.seeds = []; S.locks = {}; S.cur = 0; selected = null; return true;
 }
 // Prøver en ændring af opsætningen; fortryder den hvis den er ugyldig eller brugeren afbryder.
 async function tryChange(apply, undo) {
@@ -467,7 +483,8 @@ function showWarn({ title, name = '', text, buttons, calm = false, input = false
   warnButtons = buttons;
   $('#warnBtns').innerHTML = buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-b="${i}">${b.label}</button>`).join('');
   $('#warn').hidden = false;
-  if (input) setTimeout(() => $('#warnInput').focus(), 0);
+  // Tastaturet på iPad kræver, at feltet får fokus direkte fra et tryk – derfor ikke i en setTimeout. Virker det ikke, kommer tastaturet ved tryk i feltet.
+  if (input) { const wi = $('#warnInput'); wi.focus(); requestAnimationFrame(() => wi.focus()); }
   if (!calm) try { navigator.vibrate && navigator.vibrate([250, 120, 250, 120, 400]); } catch (e) {}
 }
 // Rolig bekræftelsesboks (erstatter confirm); giver true ved OK og false ved Annuller.
@@ -576,6 +593,7 @@ function tapSeat(i) {
   const rd = S.rounds[S.cur], p = rd[i], s = lastLayout.seats[i], url = photoFor(p, S.cur);
   $('#vName').textContent = nameOf(p);
   $('#vSeat').textContent = 'Permutation ' + (S.cur + 1) + ' · ' + (S.tables.length > 1 ? 'Bord ' + (s.t + 1) + ' · ' : '') + 'plads ' + s.k;
+  viewSeat = i; updateLockBtn();
   const img = $('#vImg');
   img.hidden = !url;
   if (url) { // hele billedet hentes fra Original; findes det ikke dér, bruges den viste udgave
@@ -586,6 +604,23 @@ function tapSeat(i) {
   $('#viewer').hidden = false;
 }
 const closeViewer = () => { $('#viewer').hidden = true; };
+
+// Lås plads: personen bliver på sin plads, når der laves en ny permutation (fx en skjult "falsk" person, der giver lige mange på siderne).
+let viewSeat = -1;
+const isLockedSeat = i => { const rd = S.rounds[S.cur]; return !!rd && S.locks[rd[i]] === i; };
+function updateLockBtn() {
+  const locked = isLockedSeat(viewSeat), b = $('#vLock');
+  b.textContent = locked ? '🔓 Lås op' : '🔒 Lås plads';
+  b.classList.toggle('primary', !locked);
+  $('#vLockHint').textContent = locked ? 'Personen er låst og bliver på denne plads ved ny permutation. Låste personer kan ikke trækkes rundt, før de låses op.'
+    : 'Låst person bliver på pladsen, når der laves en ny permutation.';
+}
+$('#vLock').onclick = () => {
+  const rd = S.rounds[S.cur]; if (!rd || viewSeat < 0) return;
+  const person = rd[viewSeat];
+  if (isLockedSeat(viewSeat)) delete S.locks[person]; else S.locks[person] = viewSeat;
+  save(); render(); updateLockBtn();
+};
 
 /* ---------- Billeder: <Navn>.jpg, <Navn>_2.jpg, <Navn>_3.jpg … i fotos/<Original|500|300>/ eller fotos/ ---------- */
 const photos = {}; // navn -> liste af billed-urls (standardbilledet først); tom liste hvis der ingen er
@@ -768,7 +803,9 @@ function render() {
          + `<rect x="${s.x-r}" y="${s.y+r*0.38}" width="${2*r}" height="${r*0.62}" fill="rgba(0,0,0,.58)" clip-path="url(#cp${i})" pointer-events="none"/>`
          + `<text x="${s.x}" y="${s.y+r*0.69}" dy=".35em" text-anchor="middle" font-size="${fs2}" fill="#fff" font-weight="600" pointer-events="none">${esc(l2)}</text>`;
     } else h += `<text x="${s.x}" y="${s.y}" dy=".35em" text-anchor="middle" font-size="${fs}" fill="#1c2430" pointer-events="none">${esc(label)}</text>`;
-    h += `<circle class="oc" cx="${s.x}" cy="${s.y}" r="${r}" fill="none" stroke="${selected === i ? '#000' : th().seatLine}" stroke-width="${selected === i ? 4 : 1.5}"${rd ? '' : ' stroke-dasharray="4 3"'}/></g>`;
+    h += `<circle class="oc" cx="${s.x}" cy="${s.y}" r="${r}" fill="none" stroke="${selected === i ? '#000' : th().seatLine}" stroke-width="${selected === i ? 4 : 1.5}"${rd ? '' : ' stroke-dasharray="4 3"'}/>`
+      + (rd && S.locks[p] === i ? `<circle cx="${s.x + r*.7}" cy="${s.y - r*.7}" r="${r*.34}" fill="#fff" stroke="#c9a227" stroke-width="2" pointer-events="none"/><text x="${s.x + r*.7}" y="${s.y - r*.7}" dy=".36em" text-anchor="middle" font-size="${r*.42}" pointer-events="none">🔒</text>` : '')
+      + '</g>';
   });
   $('#svg').outerHTML = h + '</svg>';
 
@@ -801,20 +838,23 @@ function renderSetup() {
   const round = S.shape === 'round', multi = S.tables.length > 1;
   $('#shapeRect').classList.toggle('on', !round); $('#shapeRound').classList.toggle('on', round);
   document.querySelectorAll('#cnt button').forEach(b => b.classList.toggle('on', +b.dataset.c === S.tables.length));
-  const f = (j, k, label, min, max, v) => `<div><label>${label}<input type="number" min="${min}" max="${max}" inputmode="numeric" data-t="${j}" data-k="${k}" value="${v}"></label></div>`;
+  // Antal pladser vælges i en rulleliste (pil op/ned virker ikke på iPad); diameteren skrives med det numeriske tastatur.
+  const f = (j, k, label, min, max, v) => `<div><label>${label}<select class="fld" data-t="${j}" data-k="${k}">`
+    + range(Math.max(max, v) - min + 1).map(i => `<option value="${min + i}"${min + i === v ? ' selected' : ''}>${min + i}</option>`).join('') + '</select></label></div>';
+  const num = (j, k, label, v) => `<div><label>${label}<input class="fld" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" autocomplete="off" data-t="${j}" data-k="${k}" value="${v}"></label></div>`;
   // Felterne genopbygges kun, når strukturen ændres – ellers mister Tab-tasten sit næste felt.
   const sig = S.shape + S.tables.length;
   if ($('#tables').dataset.sig !== sig) {
     $('#tables').dataset.sig = sig;
     $('#tables').innerHTML = S.tables.map((t, j) => `<div class="tbl"><b>${multi ? 'Bord ' + (j+1) : 'Bord'}</b> <span class="mute" data-cnt="${j}"></span><div class="grid">`
       + (round
-        ? f(j, 'N', 'Antal personer', 1, 40, t.N) + f(j, 'D', 'Diameter (cm)', 40, 1000, t.D)
-        : f(j, 'sT', 'Personer øverst', 0, 20, t.sT) + f(j, 'sB', 'Personer nederst', 0, 20, t.sB) + f(j, 'sL', 'Personer venstre ende', 0, 20, t.sL) + f(j, 'sR', 'Personer højre ende', 0, 20, t.sR))
+        ? f(j, 'N', 'Antal personer', 1, 20, t.N) + num(j, 'D', 'Diameter (cm)', t.D)
+        : f(j, 'sT', 'Personer øverst', 0, 12, t.sT) + f(j, 'sB', 'Personer nederst', 0, 12, t.sB) + f(j, 'sL', 'Personer venstre ende', 0, 12, t.sL) + f(j, 'sR', 'Personer højre ende', 0, 12, t.sR))
       + '</div></div>').join('');
   }
   S.tables.forEach((t, j) => {
     document.querySelector(`[data-cnt="${j}"]`).textContent = '– ' + tn(t) + ' personer';
-    document.querySelectorAll(`#tables input[data-t="${j}"]`).forEach(el => { if (document.activeElement !== el || el.dataset.k !== 'D') el.value = t[el.dataset.k]; });
+    document.querySelectorAll(`#tables [data-t="${j}"]`).forEach(el => { if (document.activeElement !== el || el.dataset.k !== 'D') el.value = t[el.dataset.k]; });
   });
   $('#total').textContent = 'I alt ' + S.n + ' personer';
   $('#ruleSeat').checked = S.ruleSeat; $('#rule1').checked = S.rule1; $('#opp').checked = S.opp;
@@ -912,12 +952,12 @@ function svgPoint(e) {
 }
 function seatAt(e, except) {
   const p = svgPoint(e); let best = null, bd = lastLayout.r * 1.4;
-  lastLayout.seats.forEach((s, i) => { const d = Math.hypot(s.x - p.x, s.y - p.y); if (i !== except && d < bd) { bd = d; best = i; } });
+  lastLayout.seats.forEach((s, i) => { const d = Math.hypot(s.x - p.x, s.y - p.y); if (i !== except && !isLockedSeat(i) && d < bd) { bd = d; best = i; } });   // man kan ikke slippe på en låst plads
   return best;
 }
 document.addEventListener('pointerdown', e => {
   const g = e.target.closest('.seat');
-  if (g && S.rounds.length) drag = { i:+g.dataset.seat, g, x0:e.clientX, y0:e.clientY, on:false, target:null };
+  if (g && S.rounds.length && !isLockedSeat(+g.dataset.seat)) drag = { i:+g.dataset.seat, g, x0:e.clientX, y0:e.clientY, on:false, target:null };
 });
 document.addEventListener('pointermove', e => {
   if (!drag) return;
