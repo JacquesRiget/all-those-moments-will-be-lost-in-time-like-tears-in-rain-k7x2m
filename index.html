@@ -500,7 +500,7 @@ async function tryChange(apply, undo) {
 let weakDeclined = false;
 const WEAK = 'Kinky Morten';
 // Versionsnummer (opdateres af lav-offline-liste.ps1); vises med småt nederst på siden.
-const APP_VERSION = '20261122-170157';
+const APP_VERSION = '20261122-170952';
 { const v = APP_VERSION, ok = /^\d{8}-\d{6}$/.test(v); $('#ver').textContent = 'Version ' + (ok ? v.slice(6, 8) + '.' + v.slice(4, 6) + '.' + v.slice(0, 4) + ' kl. ' + v.slice(9, 11) + ':' + v.slice(11, 13) : v); }
 // Blinkende advarsel i stedet for browserens alert. buttons: [{ label, cls, run }]
 let warnButtons = [];
@@ -522,7 +522,8 @@ const KB_ROWS = [['1','2','3','4','5','6','7','8','9','0'], ['q','w','e','r','t'
 // Feltet er forudfyldt med "Skriv dit navn", markeret, så det første tegn overskriver teksten (på både skærmtastatur og iPad'ens tastatur).
 const PH = 'Skriv dit navn';
 let kbShift = true, kbSystem = false, phActive = true;
-const kbTouch = () => matchMedia('(pointer: coarse)').matches || /[?&]tastatur\b/.test(location.search);
+// En iPad kan melde sig som en computer med mus (Magic Keyboard, "computerudgaven" i Safari), så vi tæller også berøringspunkter.
+const kbTouch = () => (navigator.maxTouchPoints || 0) > 0 || matchMedia('(pointer: coarse)').matches || /[?&]tastatur\b/.test(location.search);
 const typedText = () => phActive ? '' : $('#warnInput').value;   // det, der er skrevet (pladsholderteksten tæller ikke med)
 function showRefresh() {   // opdaterer teksten, som vises ved skærmtastaturet, og pladsholder-udseendet
   const typed = typedText(), s = $('#warnShow');
