@@ -118,7 +118,10 @@
   .kbk.on { background:var(--brand); color:#fff; border-color:var(--brand); }
   .kbswitch { background:none; border:0; color:var(--accent); text-decoration:underline; font:inherit; font-size:14px; margin:0 0 10px; cursor:pointer; padding:4px; }
   .kbswitch[hidden] { display:none; }
-  #warnInput { width:100%; font:inherit; font-size:18px; padding:12px; border:2px solid var(--line); border-radius:10px; margin:0 0 16px; }
+  #warnInput { width:100%; font:inherit; font-size:22px; padding:14px; border:2px solid var(--line); border-radius:10px; margin:0 0 16px; }
+  #warnShow { width:100%; min-height:58px; padding:14px; border:2px solid var(--line); border-radius:10px; margin:0 0 14px; font-size:22px; text-align:left; background:#fff; color:var(--ink); cursor:text; overflow-wrap:anywhere; }
+  #warnShow[hidden] { display:none; }
+  #warnInput.ph, #warnShow.ph { color:#9a9a9a; font-style:italic; }
   #warn.calm { animation:none; background:rgba(20,35,58,.6); }
   #warn.calm .warnbox { animation:none; border:2px solid var(--brand); }
   #warn.calm .warnbox h2 { animation:none; color:var(--brand); text-transform:none; letter-spacing:0; font-size:clamp(20px,5vw,26px); }
@@ -310,7 +313,8 @@
     <h2 id="warnTitle"></h2>
     <div id="warnName"></div>
     <p id="warnText"></p>
-    <input id="warnInput" type="text" inputmode="text" enterkeyhint="done" autocapitalize="words" autocorrect="off" spellcheck="false" maxlength="40" placeholder="Navn" autocomplete="off" hidden>
+    <div id="warnShow" hidden></div>
+    <input id="warnInput" type="text" enterkeyhint="done" autocapitalize="words" autocorrect="off" spellcheck="false" maxlength="40" placeholder="Navn" autocomplete="off" hidden>
     <div id="kb" hidden></div>
     <button type="button" id="kbSwitch" class="kbswitch" hidden></button>
     <div class="warnbtns" id="warnBtns"></div>
@@ -496,12 +500,11 @@ async function tryChange(apply, undo) {
 let weakDeclined = false;
 const WEAK = 'Kinky Morten';
 // Versionsnummer (opdateres af lav-offline-liste.ps1); vises med småt nederst på siden.
-const APP_VERSION = '20261122-165125';
+const APP_VERSION = '20261122-170157';
 { const v = APP_VERSION, ok = /^\d{8}-\d{6}$/.test(v); $('#ver').textContent = 'Version ' + (ok ? v.slice(6, 8) + '.' + v.slice(4, 6) + '.' + v.slice(0, 4) + ' kl. ' + v.slice(9, 11) + ':' + v.slice(11, 13) : v); }
 // Blinkende advarsel i stedet for browserens alert. buttons: [{ label, cls, run }]
 let warnButtons = [];
 function showWarn({ title, name = '', text, buttons, calm = false, input = false, image = '' }) {
-  $('#warnInput').hidden = !input;
   // et billede kan stå i stedet for overskriften (billedet indeholder selv teksten; title bruges som alternativ tekst)
   const wi = $('#warnImg'); wi.hidden = !image; wi.alt = image ? title.replace(/<[^>]*>/g, ' ') : ''; if (image) wi.src = image;
   $('#warnTitle').hidden = !!image;
@@ -516,8 +519,16 @@ function showWarn({ title, name = '', text, buttons, calm = false, input = false
 // Skærmtastatur: iPad åbner ikke altid sit eget tastatur til et felt i en dialog, så på berøringsskærme bruger vi vores eget
 // (qwerty med æ ø å). Under tastaturet kan man skifte til iPad'ens eget; på computer bruges det almindelige tastatur.
 const KB_ROWS = [['1','2','3','4','5','6','7','8','9','0'], ['q','w','e','r','t','y','u','i','o','p','å'], ['a','s','d','f','g','h','j','k','l','æ','ø'], ['⇧','z','x','c','v','b','n','m','⌫'], ['-','.',"'",' ','Færdig']];
-let kbShift = true, kbSystem = false;
+// Feltet er forudfyldt med "Skriv dit navn", markeret, så det første tegn overskriver teksten (på både skærmtastatur og iPad'ens tastatur).
+const PH = 'Skriv dit navn';
+let kbShift = true, kbSystem = false, phActive = true;
 const kbTouch = () => matchMedia('(pointer: coarse)').matches || /[?&]tastatur\b/.test(location.search);
+const typedText = () => phActive ? '' : $('#warnInput').value;   // det, der er skrevet (pladsholderteksten tæller ikke med)
+function showRefresh() {   // opdaterer teksten, som vises ved skærmtastaturet, og pladsholder-udseendet
+  const typed = typedText(), s = $('#warnShow');
+  s.textContent = typed || PH; s.classList.toggle('ph', !typed); $('#warnInput').classList.toggle('ph', phActive);
+}
+const selectAllInField = () => setTimeout(() => { const wi = $('#warnInput'); if (phActive && !wi.hidden) { wi.select(); wi.setSelectionRange(0, wi.value.length); } }, 0);
 function kbBuild() {
   $('#kb').innerHTML = KB_ROWS.map(row => '<div class="kbrow">' + row.map(k => {
     const cls = 'kbk' + (k === '⇧' || k === '⌫' || k === 'Færdig' ? ' wide' : '') + (k === ' ' ? ' space' : '');
@@ -525,44 +536,56 @@ function kbBuild() {
   }).join('') + '</div>').join('');
 }
 function kbRefresh() {
-  const wi = $('#warnInput'); kbShift = kbShift || wi.value === '' || /[ \-]$/.test(wi.value);
+  const v = typedText(); kbShift = kbShift || v === '' || /[ \-]$/.test(v);
   document.querySelectorAll('#kb .kbk').forEach(b => { const k = b.dataset.k; if (/^[a-zæøå]$/.test(k)) b.textContent = kbShift ? k.toUpperCase() : k; if (k === '⇧') b.classList.toggle('on', kbShift); });
 }
 function kbPress(k) {
   const wi = $('#warnInput');
+  if (k === '⇧') { kbShift = !kbShift; kbRefresh(); return; }
+  if (k === 'Færdig') { document.querySelector('#warnBtns .yes').click(); return; }
+  if (phActive) { phActive = false; wi.value = ''; }                  // første tryk overskriver pladsholderteksten
   if (k === '⌫') wi.value = wi.value.slice(0, -1);
-  else if (k === '⇧') { kbShift = !kbShift; kbRefresh(); return; }
-  else if (k === 'Færdig') { document.querySelector('#warnBtns .yes').click(); return; }
-  else if (wi.value.length < 40) { wi.value += (/^[a-zæøå]$/.test(k) && kbShift) ? k.toUpperCase() : k; kbShift = false; }
-  kbShift = false; kbRefresh();
+  else if (wi.value.length < 40) wi.value += (/^[a-zæøå]$/.test(k) && kbShift) ? k.toUpperCase() : k;
+  kbShift = false; kbRefresh(); showRefresh();
 }
+// To tilstande, og der er aldrig tricks med skrivebeskyttelse: skærmtastatur (feltet vises som tekst) eller det rigtige felt, som
+// man trykker i, så iPad'ens eget tastatur kommer frem som ved ethvert andet felt.
 function setupKeyboard(input) {
-  const wi = $('#warnInput'), kb = $('#kb'), sw = $('#kbSwitch');
-  if (!input) { kb.hidden = sw.hidden = true; document.querySelector('#warn .warnbox').classList.remove('kbwide'); return; }
+  const wi = $('#warnInput'), show = $('#warnShow'), kb = $('#kb'), sw = $('#kbSwitch');
+  if (!input) { wi.hidden = show.hidden = kb.hidden = sw.hidden = true; document.querySelector('#warn .warnbox').classList.remove('kbwide'); return; }
   if (!kb.firstChild) kbBuild();
   kbSystem = !kbTouch(); kbShift = true;
   applyKeyboardMode(); kbRefresh();
-  if (kbSystem) { wi.focus(); requestAnimationFrame(() => wi.focus()); }
+  if (kbSystem) { wi.focus(); selectAllInField(); }
 }
 function applyKeyboardMode() {
-  const wi = $('#warnInput'), kb = $('#kb'), sw = $('#kbSwitch');
-  // Feltet er aldrig skrivebeskyttet: inputmode="none" holder iPad'ens tastatur nede, mens skærmtastaturet bruges, men feltet kan stadig få fokus.
-  wi.readOnly = false; wi.setAttribute('inputmode', kbSystem ? 'text' : 'none');
-  kb.hidden = kbSystem; sw.hidden = false;   // linket vises på alle enheder, så skærmtastaturet også kan prøves på en computer
+  const wi = $('#warnInput'), show = $('#warnShow'), kb = $('#kb'), sw = $('#kbSwitch');
+  wi.hidden = !kbSystem; show.hidden = kbSystem; kb.hidden = kbSystem; sw.hidden = false;   // linket vises på alle enheder
   document.querySelector('#warn .warnbox').classList.toggle('kbwide', !kbSystem);
   sw.textContent = kbSystem ? '⌨️ Brug skærmtastaturet' : (kbTouch() ? '⌨️ Brug iPad\'ens eget tastatur' : '⌨️ Brug computerens tastatur');
+  showRefresh();
+}
+function useSystemKeyboard(on) {
+  kbSystem = on; applyKeyboardMode();
+  const wi = $('#warnInput');
+  if (on) { wi.focus(); selectAllInField(); } else { wi.blur(); kbRefresh(); }
 }
 $('#kb').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) kbPress(b.dataset.k); });
 $('#kb').addEventListener('pointerdown', e => e.preventDefault());   // tastetryk må ikke flytte fokus
-// Skift til eller fra iPad'ens eget tastatur. Fokus skal sættes direkte fra trykket, og feltet skal først forlades (blur),
-// så iPad opdager, at inputmode er ændret fra "none" til "text".
-function useSystemKeyboard(on) {
-  const wi = $('#warnInput'); kbSystem = on; applyKeyboardMode();
-  wi.blur(); if (on) wi.focus(); else kbRefresh();
-}
 $('#kbSwitch').onclick = () => useSystemKeyboard(!kbSystem);
-// Et tryk i selve skrivefeltet åbner også det almindelige tastatur – det er det mest direkte tryk, iPad accepterer.
-$('#warnInput').addEventListener('click', () => { if (!kbSystem) useSystemKeyboard(true); });
+$('#warnShow').addEventListener('click', () => useSystemKeyboard(true));   // tryk i feltet ved skærmtastaturet: skift til iPad'ens eget
+// Skrives der med det almindelige tastatur, overskrives pladsholderteksten af det første tegn (også hvis den ikke var markeret).
+$('#warnInput').addEventListener('input', e => {
+  const wi = $('#warnInput');
+  if (phActive) {
+    let v = wi.value;
+    if (e.inputType && e.inputType.startsWith('delete')) v = ''; else if (v.includes(PH)) v = v.replace(PH, '');
+    wi.value = v; phActive = false;
+  }
+  showRefresh();
+});
+$('#warnInput').addEventListener('focus', selectAllInField);
+$('#warnInput').addEventListener('click', selectAllInField);
 
 // Rolig bekræftelsesboks (erstatter confirm); giver true ved OK og false ved Annuller.
 function ask(title, text, okLabel = 'OK') {
@@ -992,10 +1015,10 @@ function renderPeople() {
 // Navn skrevet i en rolig dialog (erstatter prompt).
 function askText(title, text) {
   return new Promise(res => {
-    $('#warnInput').value = '';
+    $('#warnInput').value = PH; phActive = true;   // forudfyldt "Skriv dit navn"; urørt tæller det som tomt
     showWarn({ calm:true, input:true, title, text, buttons: [
       { label:'Annuller', run: () => res(null) },
-      { label:'OK', cls:'yes', run: () => res($('#warnInput').value.trim()) }
+      { label:'OK', cls:'yes', run: () => res(phActive ? '' : $('#warnInput').value.trim()) }
     ] });
   });
 }
